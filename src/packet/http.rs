@@ -31,9 +31,9 @@ pub enum LiveStatus {
 
 #[derive(Debug, Deserialize, Serialize, Clone)]
 pub struct RoomInitData {
-    pub room_id: isize,
-    pub short_id: isize,
-    pub uid: isize,
+    pub room_id: u64,
+    pub short_id: u64,
+    pub uid: u64,
     pub live_status: LiveStatus,
 }
 
