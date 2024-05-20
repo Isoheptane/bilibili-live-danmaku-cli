@@ -101,7 +101,7 @@ pub fn create_certificate_packet(
     token: &str
 ) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
     let cert_body = CertificatePacketBody {
-        uid: 0,
+        uid,
         roomid: room_id,
         key: token.to_string(),
         protover: Protover::Brotli as u8
