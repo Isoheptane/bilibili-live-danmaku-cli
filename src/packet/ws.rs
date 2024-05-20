@@ -1,10 +1,9 @@
-#[allow(unused, dead_code)]
-
 use derive_more::Display;
 
 use bincode::Options;
 use serde::{Deserialize, Serialize};
 
+#[allow(dead_code)]
 pub enum Protocol {
     Command         = 0,
     Special         = 1,
@@ -12,6 +11,7 @@ pub enum Protocol {
     CommandBrotli   = 3
 }
 
+#[allow(dead_code)]
 pub enum PacketType {
     Heartbeat       = 2,
     HeartbeatResp   = 3,
@@ -20,6 +20,7 @@ pub enum PacketType {
     CertificateResp = 8,
 }
 
+#[allow(dead_code)]
 pub enum Protover {
     Normal = 1,
     Zlib   = 2,
@@ -92,4 +93,28 @@ impl std::error::Error for DeserializeFailedError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         None
     }
+}
+
+pub fn create_certificate_packet(
+    uid: u64, 
+    room_id: u64, 
+    token: &str
+) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let cert_body = CertificatePacketBody {
+        uid: 0,
+        roomid: room_id,
+        key: token.to_string(),
+        protover: Protover::Brotli as u8
+    };
+    let cert_body = serde_json::ser::to_string(&cert_body)?;
+    create_packet(
+        Protocol::Special, 
+        PacketType::Certificate, 
+        cert_body.as_bytes()
+    )
+}
+
+pub fn create_heartbeat_packet() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
+    let body = b"[Object object]";
+    create_packet(Protocol::Special, PacketType::Heartbeat, body)
 }
