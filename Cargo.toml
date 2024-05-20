@@ -7,8 +7,10 @@ edition = "2021"
 
 [dependencies]
 tokio = { version = "1", features = ["full"] }
-serde = "1.0.202"
+serde = { version = "1.0", features = ["derive"] }
 serde_json = "1.0.117"
+serde_repr = "0.1"
 bytes = "1.6.0"
 tokio-tungstenite = "*"
 reqwest = { version = "0.12", features = ["json"] }
+colored = "2"
