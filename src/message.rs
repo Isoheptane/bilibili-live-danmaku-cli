@@ -19,5 +19,5 @@ pub enum LiveMessageType {
 }
 
 pub struct LiveMessage {
-
+    
 }
