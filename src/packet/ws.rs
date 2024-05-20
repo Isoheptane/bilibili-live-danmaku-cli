@@ -4,6 +4,7 @@ use bincode::Options;
 use serde::{Deserialize, Serialize};
 
 #[allow(dead_code)]
+#[repr(u16)]
 pub enum Protocol {
     Command         = 0,
     Special         = 1,
@@ -12,6 +13,7 @@ pub enum Protocol {
 }
 
 #[allow(dead_code)]
+#[repr(u32)]
 pub enum PacketType {
     Heartbeat       = 2,
     HeartbeatResp   = 3,
@@ -21,6 +23,7 @@ pub enum PacketType {
 }
 
 #[allow(dead_code)]
+#[repr(u8)]
 pub enum Protover {
     Normal = 1,
     Zlib   = 2,
@@ -68,7 +71,7 @@ pub fn create_packet(
     Ok([header_data, body.to_vec()].concat())
 }
 
-pub fn deserialize_packet(data: &[u8]) -> Result<(PacketHeader, Vec<u8>), Box<dyn std::error::Error>> {
+pub fn deserialize_packet(data: &[u8]) -> Result<(PacketHeader, &[u8]), Box<dyn std::error::Error>> {
     if data.len() < 16 {
         return Err(DeserializeFailedError {}.into());
     }
@@ -76,8 +79,11 @@ pub fn deserialize_packet(data: &[u8]) -> Result<(PacketHeader, Vec<u8>), Box<dy
         .with_fixint_encoding()
         .with_big_endian();
     let header: PacketHeader = config.deserialize(&data[..16])?;
-    let body = data[16..].to_vec();
-    Ok((header, body))
+    let total_size = header.total_size as usize;
+    if data.len() < total_size {
+        return Err(DeserializeFailedError {}.into());
+    }
+    Ok((header, &data[16..total_size as usize]))
 }
 
 #[derive(Debug, Display)]
