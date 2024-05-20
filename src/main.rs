@@ -1,3 +1,5 @@
+use colored::Colorize;
+use simple_logger::SimpleLogger;
 use std::env;
 use tokio;
 
@@ -7,6 +9,10 @@ use packet::*;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    SimpleLogger::new().with_level(log::LevelFilter::Info).env().with_timestamp_format(
+        time::macros::format_description!("[hour]:[minute]:[second]")
+    ).init().unwrap();
+
     // Get arguments
     let args: Vec<String> = env::args().collect();
 
@@ -43,8 +49,12 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .response_data()
         .expect("Invalid room_init response data.");
     
-    let room_id = room_data
-        .room_id;
+    let room_id = room_data.room_id;
+
+    log::info!(
+        target: "init",
+        "Requested real room ID: {}", room_id.to_string().bright_green()
+    );
 
     let danmaku_info_data: DanmakuInfoData = reqwest::get(format!(
         "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id={}",
@@ -54,7 +64,23 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .response_data()
         .expect("Invalid danmaku_info response data.");
 
-    println!("Listing out all available hosts:\n {:#?}", danmaku_info_data);
+    log::info!(
+        target: "init",
+        "Requested token and WebSocket servers. {} servers available.",
+        danmaku_info_data.host_list.len().to_string().bright_green()
+    );
+
+    let token = danmaku_info_data.token;
+
+    let host = danmaku_info_data.host_list.get(0).expect("No available server in the list!").clone();
+
+    log::info!(
+        target: "init",
+        "Initializing connection to {} ...",
+        format!("wss://{}:{}", host.host, host.wss_port).bright_green()
+    );
+
+    
     
     Ok(())
 }
