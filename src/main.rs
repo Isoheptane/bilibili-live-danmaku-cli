@@ -1,11 +1,9 @@
 use chrono::{TimeDelta, Utc};
 use colored::Colorize;
 use message::{LiveMessage, RawLiveMessage};
-use serde::{Deserialize, Serializer};
 use simple_logger::SimpleLogger;
 use tungstenite::Message;
 use std::{env, io::Read, thread::sleep, time::Duration};
-use tokio;
 
 mod config;
 mod packet;
@@ -14,8 +12,7 @@ mod message;
 use packet::{http::*, ws::*};
 use config::Config;
 
-#[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     SimpleLogger::new().with_level(log::LevelFilter::Info).env().with_timestamp_format(
         time::macros::format_description!("[hour]:[minute]:[second]")
     ).init().unwrap();
@@ -23,34 +20,41 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::from_args(env::args().collect());
 
     // Start calling APIs
-    let room_data: RoomInitData = reqwest::get(format!(
-        "https://api.live.bilibili.com/room/v1/Room/room_init?id={}",
-        config.room_id
-    )).await?
-        .json::<HttpAPIResponse<RoomInitData>>().await?
-        .response_data()
-        .expect("Invalid room_init response data.");
-    
-    let room_id = room_data.room_id;
+    // Get room data for the real room id
+    let room_data: RoomInitData = serde_json::from_str::<HttpAPIResponse<RoomInitData>>(
+        ureq::get(
+            &format!("https://api.live.bilibili.com/room/v1/Room/room_init?id={}", config.room_id)
+        )
+            .call()
+            .expect("Failed to request for room_init data")
+            .into_string()
+            .expect("Failed to read string data from request")
+            .as_str()
+    )
+    .expect("Failed to parse room_init json data")
+    .response_data()
+    .expect("Failed to parse room_init data to struct");
 
+    let room_id = room_data.room_id;
     log::info!(
         target: "main",
         "Requested real room ID: {}", room_id.to_string().bright_green()
     );
-let danmaku_info_data: DanmakuInfoData = reqwest::Client::new()
-    .get(format!(
-        "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id={}",
-        room_id
-    ))
-    .header(
-        reqwest::header::COOKIE, 
-        config.sessdata.map(
-            |sessdata| format!("SESSDATA={}", sessdata)
-        ).unwrap_or("".to_string()))
-    .send().await?
-        .json::<HttpAPIResponse<DanmakuInfoData>>().await?
-        .response_data()
-        .expect("Invalid danmaku_info response data.");
+    // Get danmaku info data
+    let danmaku_info_data: DanmakuInfoData = serde_json::from_str::<HttpAPIResponse<DanmakuInfoData>>(
+        ureq::get(
+            &format!("https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id={}", room_id)
+        )
+            .call()
+            .expect("Failed to request for room_init data")
+            .into_string()
+            .expect("Failed to read string data from request")
+            .as_str()
+    )
+    .expect("Failed to parse danmaku_info json data")
+    .response_data()
+    .expect("Failed to parse danmaku_info data to struct");
+
     log::info!(
         target: "main",
         "Requested token and WebSocket servers. {} servers available.",
@@ -69,7 +73,7 @@ let danmaku_info_data: DanmakuInfoData = reqwest::Client::new()
     let host_url = url::Url::parse(&host_url).expect("Failed to parse URL");
     
     loop {
-        if let Err(e) = start_listening(room_id, config.uid.unwrap_or(0), &token, &host_url).await {
+        if let Err(e) = start_listening(room_id, config.uid.unwrap_or(0), &token, &host_url) {
             log::warn!(target: "init", "Connection closed! \n {}", e.to_string());
             log::warn!(target: "init", "Trying to reconnect after 5 seconds.");
             sleep(Duration::from_secs(5));
@@ -77,7 +81,7 @@ let danmaku_info_data: DanmakuInfoData = reqwest::Client::new()
     }
 }
 
-async fn start_listening(
+fn start_listening(
     room_id: u64,
     uid: u64,
     token: &String,
