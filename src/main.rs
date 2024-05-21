@@ -2,8 +2,8 @@ use chrono::{TimeDelta, Utc};
 use colored::Colorize;
 use message::{LiveMessage, RawLiveMessage};
 use simple_logger::SimpleLogger;
-use tungstenite::Message;
-use std::{env, io::Read, thread::sleep, time::Duration};
+use websocket::{ws::dataframe::DataFrame, Message, WebSocketError};
+use std::{env, io::{ErrorKind, Read}, thread::sleep, time::Duration};
 
 mod config;
 mod packet;
@@ -21,19 +21,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // Start calling APIs
     // Get room data for the real room id
-    let room_data: RoomInitData = serde_json::from_str::<HttpAPIResponse<RoomInitData>>(
-        ureq::get(
-            &format!("https://api.live.bilibili.com/room/v1/Room/room_init?id={}", config.room_id)
-        )
-            .call()
-            .expect("Failed to request for room_init data")
-            .into_string()
-            .expect("Failed to read string data from request")
-            .as_str()
+    let room_data: RoomInitData = ureq::get(
+        &format!("https://api.live.bilibili.com/room/v1/Room/room_init?id={}", config.room_id)
     )
-    .expect("Failed to parse room_init json data")
-    .response_data()
-    .expect("Failed to parse room_init data to struct");
+        .call()
+        .expect("Failed to request for room_init data")
+        .into_json::<HttpAPIResponse<RoomInitData>>()
+        .expect("Failed to parse room_init json data")
+        .response_data()
+        .expect("Response data is empty");
 
     let room_id = room_data.room_id;
     log::info!(
@@ -41,19 +37,15 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Requested real room ID: {}", room_id.to_string().bright_green()
     );
     // Get danmaku info data
-    let danmaku_info_data: DanmakuInfoData = serde_json::from_str::<HttpAPIResponse<DanmakuInfoData>>(
-        ureq::get(
+    let danmaku_info_data: DanmakuInfoData = ureq::get(
             &format!("https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id={}", room_id)
-        )
-            .call()
-            .expect("Failed to request for room_init data")
-            .into_string()
-            .expect("Failed to read string data from request")
-            .as_str()
     )
-    .expect("Failed to parse danmaku_info json data")
-    .response_data()
-    .expect("Failed to parse danmaku_info data to struct");
+        .call()
+        .expect("Failed to request for room_init data")
+        .into_json::<HttpAPIResponse<DanmakuInfoData>>()
+        .expect("Failed to parse danmaku_info json data")
+        .response_data()
+        .expect("Response data is empty");
 
     log::info!(
         target: "main",
@@ -87,17 +79,20 @@ fn start_listening(
     host_url: &str
 ) -> Result<(), Box<dyn std::error::Error>> {
     // *req.version_mut() = http::Version::HTTP_11;
-    let (mut stream, _) = tungstenite::client::connect(host_url)?;
+    let mut client = websocket::ClientBuilder::new(host_url).unwrap().connect_secure(None).unwrap();
+    // Client should always work in nonblocking mode
+    client.set_nonblocking(true)?;
     log::info!(
         target: "client",
         "Successfully connected to server"
     );
+
     let mut last_heartbeat = Utc::now();
     // Send certificate
-    stream.send(Message::binary(create_certificate_packet(uid, room_id, token)?))?;
+    client.send_message(&Message::binary(create_certificate_packet(uid, room_id, token)?))?;
     // Main loop
     loop {
-        sleep(Duration::from_millis(10));
+        sleep(Duration::from_millis(100));
         // Check heartbeat
         if last_heartbeat
             .checked_add_signed(TimeDelta::seconds(20))
@@ -105,7 +100,7 @@ fn start_listening(
         {
             let packet = create_heartbeat_packet();
             if let Ok(packet) = packet {
-                match stream.send(Message::binary(packet)) {
+                match client.send_message(&Message::binary(packet)) {
                     Ok(_) => {
                         last_heartbeat = Utc::now();
                         log::debug!(
@@ -124,27 +119,36 @@ fn start_listening(
             }
         }
         // Read all packets
-        while stream.can_read() {
-            let msg = match stream.read() {
-                Ok(msg) => msg,
+        // log::trace!(target: "client", "Begin receiving message...");
+        loop {
+            let msg = match client.recv_message() {
+                Ok(x) => x,
                 Err(e) => match e {
-                    tungstenite::Error::ConnectionClosed => { return Err(e.into()); },
-                    _ => {
-                        log::warn!(
+                    WebSocketError::IoError(io_error) => {
+                        if io_error.kind() == ErrorKind::WouldBlock {
+                            // Jump out of poll cycle if block
+                            break;
+                        } else {
+                            // Other IO error
+                            return Err(WebSocketError::IoError(io_error).into());
+                        }
+                    },
+                    e => {
+                        log::debug!(
                             target: "client", 
-                            "Failed to receive message: {}", 
+                            "Error occured while trying to receive message: {:?}",
                             e
                         );
-                        continue;
+                        break;
                     }
                 }
             };
-            let data = msg.into_data();
+            let data = msg.take_payload();
             let (header, body) = match deserialize_packet(data.as_slice()) {
                 Ok(x) => x,
                 Err(_) => { continue; }
             };
-            log::debug!(
+            log::trace!(
                 target: "client", 
                 "Received packet: {:?}",
                 header
@@ -216,7 +220,7 @@ fn process_packet(header: PacketHeader, body: &[u8]) -> Result<(), PacketProcess
                     )
                 }
             }
-            log::debug!(
+            log::trace!(
                 target: "client", 
                 "Processed inner message block. Read length {}/{} bytes.",
                 read_len,
@@ -239,7 +243,7 @@ fn process_packet(header: PacketHeader, body: &[u8]) -> Result<(), PacketProcess
     bytes.push(0);
     let json = String::from_utf8(bytes)
         .map_err(|e| PacketProcessError::DeserializeError(Some(e.into())))?;
-    log::debug!(target: "client", "Processing JSON string: {:#?}", json);
+    log::trace!(target: "client", "Processing JSON string: {:#?}", json);
     let raw_live_message: RawLiveMessage = serde_json::from_str(&json)
         .map_err(|e| PacketProcessError::DeserializeError(Some(e.into())))?;
     let message = LiveMessage::try_from(raw_live_message)
