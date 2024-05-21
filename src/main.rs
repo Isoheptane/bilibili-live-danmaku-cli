@@ -1,12 +1,10 @@
 use chrono::{TimeDelta, Utc};
 use colored::Colorize;
-use derive_more::Display;
-use futures_util::{FutureExt, SinkExt, StreamExt};
 use message::{LiveMessage, RawLiveMessage};
 use serde::{Deserialize, Serializer};
 use simple_logger::SimpleLogger;
-use tokio_tungstenite::{connect_async, tungstenite::Message};
-use std::{env, fmt::{write, Display, Pointer}, io::Read, thread::sleep, time::Duration};
+use tungstenite::Message;
+use std::{env, io::Read, thread::sleep, time::Duration};
 use tokio;
 
 mod config;
@@ -85,14 +83,14 @@ async fn start_listening(
     token: &String,
     host_url: &url::Url
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let (mut stream, _) = connect_async(host_url).await?;
+    let (mut stream, _) = tungstenite::connect(host_url)?;
     log::info!(
         target: "client",
         "Successfully connected to server"
     );
     let mut last_heartbeat = Utc::now();
     // Send certificate
-    stream.send(Message::binary(create_certificate_packet(uid, room_id, token)?)).await?;
+    stream.send(Message::binary(create_certificate_packet(uid, room_id, token)?))?;
     // Main loop
     loop {
         sleep(Duration::from_millis(10));
@@ -103,7 +101,7 @@ async fn start_listening(
         {
             let packet = create_heartbeat_packet();
             if let Ok(packet) = packet {
-                match stream.send(Message::binary(packet)).await {
+                match stream.send(Message::binary(packet)) {
                     Ok(_) => {
                         last_heartbeat = Utc::now();
                         log::debug!(
@@ -122,16 +120,19 @@ async fn start_listening(
             }
         }
         // Read all packets
-        if let Some(Some(msg)) = stream.next().now_or_never() {
-            let msg = match msg {
+        while stream.can_read() {
+            let msg = match stream.read() {
                 Ok(msg) => msg,
-                Err(e) => {
-                    log::warn!(
-                        target: "client", 
-                        "Failed to receive message: {}", 
-                        e
-                    );
-                    continue;
+                Err(e) => match e {
+                    tungstenite::Error::ConnectionClosed => { return Err(e.into()); },
+                    _ => {
+                        log::warn!(
+                            target: "client", 
+                            "Failed to receive message: {}", 
+                            e
+                        );
+                        continue;
+                    }
                 }
             };
             let data = msg.into_data();
