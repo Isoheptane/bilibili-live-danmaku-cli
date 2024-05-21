@@ -83,6 +83,7 @@ dependencies = [
  "derive_more",
  "hex",
  "log 0.4.21",
+ "native-tls",
  "serde",
  "serde_json",
  "serde_repr",

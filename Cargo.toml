@@ -25,3 +25,4 @@ brotli = "6.0.0"
 simple_logger = "5.0.0"
 ureq = { version = "2.9.7", default-features = false, features = ["native-tls", "json"] }
 websocket = { version = "0.27.1", default-features = false, features = ["sync", "sync-ssl"] }
+native-tls = "0.2.11"

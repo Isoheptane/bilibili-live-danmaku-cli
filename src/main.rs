@@ -20,8 +20,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::from_args(env::args().collect());
 
     // Start calling APIs
+    let agent = ureq::builder().tls_connector(native_tls::TlsConnector::new().unwrap().into()).build();
     // Get room data for the real room id
-    let room_data: RoomInitData = ureq::get(
+    let room_data: RoomInitData = agent.get(
         &format!("https://api.live.bilibili.com/room/v1/Room/room_init?id={}", config.room_id)
     )
         .call()
@@ -37,7 +38,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Requested real room ID: {}", room_id.to_string().bright_green()
     );
     // Get danmaku info data
-    let danmaku_info_data: DanmakuInfoData = ureq::get(
+    let danmaku_info_data: DanmakuInfoData = agent.get(
             &format!("https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id={}", room_id)
     )
         .call()
