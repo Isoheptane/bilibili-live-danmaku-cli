@@ -24,5 +24,6 @@ derive_more = "0.99.17"
 chrono = "0.4.38"
 brotli = "6.0.0"
 simple_logger = "5.0.0"
-tungstenite = "0.21.0"
+tungstenite = { version = "0.21.0", features = ["native-tls"] }
 ureq = "2.9.7"
+http = "1.1.0"

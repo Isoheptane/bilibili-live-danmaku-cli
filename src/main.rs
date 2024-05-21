@@ -70,7 +70,6 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Initializing connection to {} ...",
         host_url.bright_green()
     );
-    let host_url = url::Url::parse(&host_url).expect("Failed to parse URL");
     
     loop {
         if let Err(e) = start_listening(room_id, config.uid.unwrap_or(0), &token, &host_url) {
@@ -84,10 +83,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 fn start_listening(
     room_id: u64,
     uid: u64,
-    token: &String,
-    host_url: &url::Url
+    token: &str,
+    host_url: &str
 ) -> Result<(), Box<dyn std::error::Error>> {
-    let (mut stream, _) = tungstenite::connect(host_url)?;
+    // *req.version_mut() = http::Version::HTTP_11;
+    let (mut stream, _) = tungstenite::client::connect(host_url)?;
     log::info!(
         target: "client",
         "Successfully connected to server"
