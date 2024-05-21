@@ -2,7 +2,7 @@ use chrono::{TimeDelta, Utc};
 use colored::Colorize;
 use message::{LiveMessage, RawLiveMessage};
 use simple_logger::SimpleLogger;
-use websocket::{ws::dataframe::DataFrame, Message, WebSocketError};
+use websocket::{url::form_urlencoded::Target, ws::{self, dataframe::DataFrame}, Message, WebSocketError};
 use std::{env, io::{ErrorKind, Read}, thread::sleep, time::Duration};
 
 mod config;
@@ -41,6 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let danmaku_info_data: DanmakuInfoData = agent.get(
             &format!("https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id={}", room_id)
     )
+        .set("Cookie", format!("SESSDATA={}", config.sessdata.unwrap_or_default()).as_str())
         .call()
         .expect("Failed to request for room_init data")
         .into_json::<HttpAPIResponse<DanmakuInfoData>>()
@@ -50,7 +51,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     log::info!(
         target: "main",
-        "Requested token and WebSocket servers. {} servers available.",
+        "Requested token and WebSocket servers. {} servers available",
         danmaku_info_data.host_list.len().to_string().bright_green()
     );
 
@@ -66,10 +67,12 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     
     loop {
         if let Err(e) = start_listening(room_id, config.uid.unwrap_or(0), &token, &host_url) {
-            log::warn!(target: "init", "Connection closed! \n {}", e.to_string());
-            log::warn!(target: "init", "Trying to reconnect after 5 seconds.");
-            sleep(Duration::from_secs(5));
+            log::warn!(target: "init", "Error occured in the connection: \n {}", e.to_string());
+        } else {
+            log::warn!(target: "init", "Connection closed by server");
         }
+        log::warn!(target: "init", "Trying to reconnect after 5 seconds");
+        sleep(Duration::from_secs(5));
     }
 }
 
@@ -83,14 +86,12 @@ fn start_listening(
     let mut client = websocket::ClientBuilder::new(host_url).unwrap().connect_secure(None).unwrap();
     // Client should always work in nonblocking mode
     client.set_nonblocking(true)?;
-    log::info!(
-        target: "client",
-        "Successfully connected to server"
-    );
+    log::info!(target: "client", "Successfully connected to server");
 
     let mut last_heartbeat = Utc::now();
     // Send certificate
     client.send_message(&Message::binary(create_certificate_packet(uid, room_id, token)?))?;
+    log::info!(target: "client", "Certificate packet sent");
     // Main loop
     loop {
         sleep(Duration::from_millis(100));
@@ -106,7 +107,7 @@ fn start_listening(
                         last_heartbeat = Utc::now();
                         log::debug!(
                             target: "client",
-                            "Sent heartbeat packet"
+                            "Heartbeat packet sent"
                         );
                     },
                     Err(e) => {
@@ -134,6 +135,10 @@ fn start_listening(
                             return Err(WebSocketError::IoError(io_error).into());
                         }
                     },
+                    WebSocketError::NoDataAvailable => {
+                        // Server disconnect
+                        return Ok(());
+                    },
                     e => {
                         log::debug!(
                             target: "client", 
@@ -144,6 +149,9 @@ fn start_listening(
                     }
                 }
             };
+            if msg.is_close() {
+                return Ok(());
+            }
             let data = msg.take_payload();
             let (header, body) = match deserialize_packet(data.as_slice()) {
                 Ok(x) => x,
