@@ -2,7 +2,7 @@ use chrono::{TimeDelta, Utc};
 use colored::Colorize;
 use message::{LiveMessage, RawLiveMessage};
 use simple_logger::SimpleLogger;
-use websocket::{url::form_urlencoded::Target, ws::{self, dataframe::DataFrame}, Message, WebSocketError};
+use websocket::{ws::dataframe::DataFrame, Message, WebSocketError};
 use std::{env, io::{ErrorKind, Read}, thread::sleep, time::Duration};
 
 mod config;
@@ -247,9 +247,7 @@ fn process_packet(header: PacketHeader, body: &[u8]) -> Result<(), PacketProcess
         return Ok(());
     }
     // Add ending zero to make sure String::from_utf8 will work
-    let mut bytes = body.to_vec();
-    bytes.push(0);
-    let json = String::from_utf8(bytes)
+    let json = String::from_utf8(body.to_vec())
         .map_err(|e| PacketProcessError::DeserializeError(Some(e.into())))?;
     log::trace!(target: "client", "Processing JSON string: {:#?}", json);
     let raw_live_message: RawLiveMessage = serde_json::from_str(&json)
