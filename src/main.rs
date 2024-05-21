@@ -91,7 +91,7 @@ fn start_listening(
     let mut last_heartbeat = Utc::now();
     // Send certificate
     client.send_message(&Message::binary(create_certificate_packet(uid, room_id, token)?))?;
-    log::info!(target: "client", "Certificate packet sent");
+    log::debug!(target: "client", "Certificate packet sent");
     // Main loop
     loop {
         sleep(Duration::from_millis(100));
