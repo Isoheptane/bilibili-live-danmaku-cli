@@ -194,7 +194,7 @@ fn process_packet(header: PacketHeader, body: &[u8]) -> Result<(), PacketProcess
         let mut data: Vec<u8> = vec![];
         brotli::Decompressor::new(body, 4096)
             .read_to_end(&mut data)
-            .map_err(|e| PacketProcessError::DecompressError)?;
+            .map_err(|_| PacketProcessError::DecompressError)?;
         let total_length: usize = data.len();
         let mut read_len: usize = 0;
         while read_len < total_length {
@@ -230,7 +230,6 @@ fn process_packet(header: PacketHeader, body: &[u8]) -> Result<(), PacketProcess
         return Ok(());
     } else if header.protocol == Protocol::CommandZlib as u16 {
         todo!();
-        return Ok(());
     }
     // Raw packet process
     // Heartbeat 
