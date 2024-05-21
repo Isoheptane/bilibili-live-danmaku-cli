@@ -1,9 +1,12 @@
 use chrono::{TimeDelta, Utc};
 use colored::Colorize;
+use derive_more::Display;
 use futures_util::{FutureExt, SinkExt, StreamExt};
+use message::{LiveMessage, RawLiveMessage};
+use serde::{Deserialize, Serializer};
 use simple_logger::SimpleLogger;
 use tokio_tungstenite::{connect_async, tungstenite::Message};
-use std::{env, io::Read, thread::sleep, time::Duration};
+use std::{env, fmt::{write, Display, Pointer}, io::Read, thread::sleep, time::Duration};
 use tokio;
 
 mod config;
@@ -146,51 +149,97 @@ async fn start_listening(
     }
 }
 
-fn process_packet(header: PacketHeader, body: &[u8]) {
+#[derive(Debug)]
+pub enum PacketProcessError {
+    DecompressError,
+    PacketDeserializeError,
+    DeserializeError(Option<Box<dyn std::error::Error>>)
+}
+
+impl std::error::Error for PacketProcessError {
+    fn description(&self) -> &str {
+        match self {
+            Self::DecompressError => "Failed to decompress data",
+            Self::PacketDeserializeError => "Failed to deserialize packet header and body",
+            Self::DeserializeError(_) => "Failed to deserialize packet body",
+        }
+    }
+}
+
+impl std::fmt::Display for PacketProcessError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("PacketProcessError {{ type: ")?;
+        match self {
+            Self::DecompressError => f.write_str("DecompressionError")?,
+            Self::PacketDeserializeError => f.write_str("PacketDeserializeError")?,
+            Self::DeserializeError(e) => f.write_str(
+                format!("DeserializeError, innerError: {:?}", e).as_str()
+            )?
+        };
+        write!(f, "}}")
+    }
+}
+
+fn process_packet(header: PacketHeader, body: &[u8]) -> Result<(), PacketProcessError> {
     if header.protocol == Protocol::CommandBrotli as u16 {
         let mut data: Vec<u8> = vec![];
-        if let Err(e) = brotli::Decompressor::new(body, 4096).read_to_end(&mut data) {
-            log::debug!(target: "client", "Failed to decompress data: {}", e);
-        }
+        brotli::Decompressor::new(body, 4096)
+            .read_to_end(&mut data)
+            .map_err(|e| PacketProcessError::DecompressError)?;
         let total_length: usize = data.len();
         let mut read_len: usize = 0;
         while read_len < total_length {
-            let (header, body) = match deserialize_packet(&data[read_len..]) {
+            let (header, body) = match deserialize_packet(&data) {
                 Ok(x) => x,
-                Err(e) => {
+                Err(_) => {
                     log::debug!(
-                        target: "client", 
-                        "Failed to deserialize inner message: {}", 
-                        e
+                        target: "client",
+                        "Error occured while deserializing packet: {}",
+                        PacketProcessError::PacketDeserializeError
                     );
-                    break;
+                    continue;
                 }
             };
             read_len += body.len() + 16;
-            process_packet(header, body);
+            match process_packet(header, body) {
+                Ok(()) => {},
+                Err(e) => {
+                    log::debug!(
+                        target: "client",
+                        "Error occured while processing inner packet: {}",
+                        e
+                    )
+                }
+            }
             log::debug!(
                 target: "client", 
                 "Processed inner message block. Read length {}/{} bytes.",
                 read_len,
                 total_length
-            );
+            )
         }
-        return;
+        return Ok(());
     } else if header.protocol == Protocol::CommandZlib as u16 {
         todo!();
-        return;
+        return Ok(());
     }
     // Raw packet process
     // Heartbeat 
     if header.packet_type != PacketType::Command as u32 {
         //  TODO
-        return;
+        return Ok(());
     }
     // Add ending zero to make sure String::from_utf8 will work
     let mut bytes = body.to_vec();
     bytes.push(0);
-    let json = match String::from_utf8(bytes) {
-        Ok(json) => json,
-        Err(_) => { return; }
-    };
+    let json = String::from_utf8(bytes)
+        .map_err(|e| PacketProcessError::DeserializeError(Some(e.into())))?;
+    log::debug!(target: "client", "Processing JSON string: {:#?}", json);
+    let raw_live_message: RawLiveMessage = serde_json::from_str(&json)
+        .map_err(|e| PacketProcessError::DeserializeError(Some(e.into())))?;
+    let message = LiveMessage::try_from(raw_live_message)
+        .map_err(|_| PacketProcessError::DeserializeError(None))?;
+    log::info!(target: "client", "Message: {:#?}", message);   
+
+    Ok(())
 }

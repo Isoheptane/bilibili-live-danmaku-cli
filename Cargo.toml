@@ -5,6 +5,11 @@ edition = "2021"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
+[profile.release]
+opt-level = 'z'
+lto = true
+
+
 [dependencies]
 tokio = { version = "1", features = ["full"] }
 tokio-tungstenite = { version = "*", features = ["native-tls"] }
@@ -23,3 +28,5 @@ derive_more = "0.99.17"
 chrono = "0.4.38"
 brotli = "6.0.0"
 simple_logger = "5.0.0"
+tungstenite = "0.21.0"
+ureq = "2.9.7"
