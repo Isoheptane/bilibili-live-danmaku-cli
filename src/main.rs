@@ -207,25 +207,15 @@ fn process_packet(header: PacketHeader, body: &[u8]) -> Result<(), PacketProcess
         while read_len < total_length {
             let (header, body) = match deserialize_packet(&data) {
                 Ok(x) => x,
-                Err(_) => {
-                    log::debug!(
-                        target: "client",
-                        "Error occured while deserializing packet: {}",
-                        PacketProcessError::PacketDeserializeError
-                    );
-                    continue;
-                }
+                Err(_) => { return Err(PacketProcessError::PacketDeserializeError); }
             };
             read_len += body.len() + 16;
-            match process_packet(header, body) {
-                Ok(()) => {},
-                Err(e) => {
-                    log::debug!(
-                        target: "client",
-                        "Error occured while processing inner packet: {}",
-                        e
-                    )
-                }
+            if let Err(e) = process_packet(header, body) {
+                log::debug!(
+                    target: "client",
+                    "Error occured while processing inner packet: {}",
+                    e
+                )
             }
             log::trace!(
                 target: "client", 
@@ -233,7 +223,7 @@ fn process_packet(header: PacketHeader, body: &[u8]) -> Result<(), PacketProcess
                 read_len,
                 total_length
             )
-        }
+        };
         return Ok(());
     } else if header.protocol == Protocol::CommandZlib as u16 {
         todo!();
