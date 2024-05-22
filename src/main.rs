@@ -128,7 +128,7 @@ fn start_listening(
                 Err(e) => match e {
                     WebSocketError::IoError(io_error) => {
                         if io_error.kind() == ErrorKind::WouldBlock {
-                            // Jump out of poll cycle if block
+                            // Jump out of poll cycle if would block
                             break;
                         } else {
                             // Other IO error
