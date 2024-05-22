@@ -191,7 +191,7 @@ fn process_depacked_message(message: DepackedMessage) {
         let live_message = match LiveMessage::try_from(raw_message) {
             Ok(x) => x,
             Err(RawMessageDeserializeError::NotSupported(cmd)) => {
-                log::debug!(target: "client", "Ignoring unsupported command type {:#}", cmd);
+                log::debug!(target: "client", "Ignored unsupported command type {:#?}", cmd);
                 continue;
             },
             Err(RawMessageDeserializeError::DeserializeError) => {
@@ -204,5 +204,27 @@ fn process_depacked_message(message: DepackedMessage) {
 }
 
 fn process_live_message(message: LiveMessage) {
-    log::info!(target: "client", "{:#?}", message);
+    match message {
+        LiveMessage::Danmaku(info) => {
+            let username = match (info.is_admin, info.guard_level) {
+                (true, _) => info.username.bright_red(),
+                (false, 0) => info.username.bright_green(),
+                (false, 1) => info.username.bright_cyan(),
+                (false, _) => info.username.bright_purple(),
+            };
+            println!(
+                "<{}> {}",
+                username,
+                info.text
+            )
+        }
+        LiveMessage::SendGift(info) => {
+            println!(
+                "* {} 投餵了 {} 個 {}",
+                info.username.bright_yellow(),
+                info.count.to_string().bright_green(),
+                info.gift_name.bright_magenta(),
+            )
+        }
+    }
 }
