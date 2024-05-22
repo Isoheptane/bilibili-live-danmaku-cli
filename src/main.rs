@@ -84,9 +84,10 @@ fn start_listening(
     token: &str,
     host_url: &str
 ) -> Result<(), Box<dyn std::error::Error>> {
-    // *req.version_mut() = http::Version::HTTP_11;
-    let mut client = websocket::ClientBuilder::new(host_url).unwrap().connect_secure(None).unwrap();
-    // Client should always work in nonblocking mode
+
+    let mut client = websocket::ClientBuilder::new(host_url).unwrap()
+        .connect_secure(None).unwrap();
+    // Client should work in nonblocking mode
     client.set_nonblocking(true)?;
     log::info!(target: "client", "Successfully connected to server");
 
@@ -96,8 +97,9 @@ fn start_listening(
     log::debug!(target: "client", "Certificate packet sent");
     // Main loop
 
-    loop {
-        sleep(Duration::from_millis(100));
+    'main: loop {
+        // Poll interval
+        sleep(Duration::from_millis(200));
         // Check heartbeat
         if last_heartbeat
             .checked_add_signed(TimeDelta::seconds(20))
@@ -119,33 +121,10 @@ fn start_listening(
             }
         }
         // Read all packets
-        // log::trace!(target: "client", "Begin receiving message...");
-        loop {
+        let error = 'poll: loop {
             let msg = match client.recv_message() {
                 Ok(x) => x,
-                Err(e) => match e {
-                    WebSocketError::IoError(io_error) => {
-                        if io_error.kind() == ErrorKind::WouldBlock {
-                            // Jump out of poll cycle if would block
-                            break;
-                        } else {
-                            // Other IO error
-                            return Err(WebSocketError::IoError(io_error).into());
-                        }
-                    },
-                    WebSocketError::NoDataAvailable => {
-                        // Server disconnect
-                        return Ok(());
-                    },
-                    e => {
-                        log::debug!(
-                            target: "client", 
-                            "Error occured while trying to receive message: {:?}",
-                            e
-                        );
-                        break;
-                    }
-                }
+                Err(e) => break 'poll e
             };
             if msg.is_close() {
                 return Ok(());
@@ -161,7 +140,28 @@ fn start_listening(
                 header
             );
             process_packet(header, body);
-        }
+        };
+        // Fetch out unhandled errors
+        let error = match error {
+            WebSocketError::IoError(io_error) => {
+                // Continue main loop on blocking operations
+                if io_error.kind() == ErrorKind::WouldBlock {
+                    continue 'main;
+                } else {
+                    WebSocketError::IoError(io_error)
+                }
+            },
+            WebSocketError::NoDataAvailable => {
+                // Server disconnect
+                return Ok(());
+            },
+            e => e
+        };
+        log::warn!(
+            target: "client",
+            "Error occured when trying to poll message from WebSocet: {}",
+            error
+        )
     }
 }
 
