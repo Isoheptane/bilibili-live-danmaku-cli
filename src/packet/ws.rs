@@ -101,7 +101,7 @@ impl std::error::Error for DeserializeFailedError {
     }
 }
 
-pub fn create_certificate_packet(
+pub fn certificate_packet(
     uid: u64, 
     room_id: u64, 
     token: &str
@@ -120,7 +120,13 @@ pub fn create_certificate_packet(
     )
 }
 
-pub fn create_heartbeat_packet() -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let body = b"[Object object]";
-    create_packet(Protocol::Special, PacketType::Heartbeat, body)
+pub fn heartbeat_packet() -> &'static [u8] {
+    &[
+        0, 0, 0, 31,    // Total length 
+        0, 16,          // Header size
+        0, 1,           // Protocol
+        0, 0, 0, 2,     // Packet type
+        0, 0, 0, 1,     // Sequence
+        91, 79, 98, 106, 101, 99, 116, 32, 111, 98, 106, 101, 99, 116, 93   // Body
+    ]
 }

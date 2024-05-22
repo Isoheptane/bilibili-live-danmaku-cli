@@ -92,9 +92,10 @@ fn start_listening(
 
     let mut last_heartbeat = Utc::now();
     // Send certificate
-    client.send_message(&Message::binary(create_certificate_packet(uid, room_id, token)?))?;
+    client.send_message(&Message::binary(certificate_packet(uid, room_id, token)?))?;
     log::debug!(target: "client", "Certificate packet sent");
     // Main loop
+
     loop {
         sleep(Duration::from_millis(100));
         // Check heartbeat
@@ -102,24 +103,19 @@ fn start_listening(
             .checked_add_signed(TimeDelta::seconds(20))
             .is_some_and(|time| Utc::now() > time) 
         {
-            let packet = create_heartbeat_packet();
-            if let Ok(packet) = packet {
-                match client.send_message(&Message::binary(packet)) {
-                    Ok(_) => {
-                        last_heartbeat = Utc::now();
-                        log::debug!(
-                            target: "client",
-                            "Heartbeat packet sent"
-                        );
-                    },
-                    Err(e) => {
-                        log::warn!(
-                            target: "client",
-                            "Failed to send heartbeat packet:\n {}",
-                            e
-                        );
-                    }
-                }
+            let packet = heartbeat_packet();
+            if let Err(e) = client.send_message(&Message::binary(packet)) {
+                log::warn!(
+                    target: "client",
+                    "Failed to send heartbeat packet:\n {}",
+                    e
+                );
+            } else {
+                last_heartbeat = Utc::now();
+                log::debug!(
+                    target: "client",
+                    "Heartbeat packet sent"
+                );
             }
         }
         // Read all packets
