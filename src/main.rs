@@ -12,6 +12,8 @@ mod message;
 use packet::{http::*, ws::*};
 use config::Config;
 
+use crate::message::RawMessageDeserializeError;
+
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     SimpleLogger::new().with_level(log::LevelFilter::Info).env().with_timestamp_format(
         time::macros::format_description!("[hour]:[minute]:[second]")
@@ -252,8 +254,19 @@ fn process_packet(header: PacketHeader, body: &[u8]) -> Result<(), PacketProcess
     log::trace!(target: "client", "Processing JSON string: {:#?}", json);
     let raw_live_message: RawLiveMessage = serde_json::from_str(&json)
         .map_err(|e| PacketProcessError::DeserializeError(Some(e.into())))?;
-    let message = LiveMessage::try_from(raw_live_message)
-        .map_err(|_| PacketProcessError::DeserializeError(None))?;
+    let message = match LiveMessage::try_from(raw_live_message) {
+        Ok(x) => x,
+        Err(RawMessageDeserializeError::DeserializeError) => {
+            log::debug!(target: "client", "Failed to deserialize raw message into specific message");
+            return Err(PacketProcessError::DeserializeError(
+                Some(RawMessageDeserializeError::DeserializeError.into())
+            ));
+        },
+        Err(RawMessageDeserializeError::NotSupported(cmd)) => {
+            log::debug!(target: "client", "Message type {:#} is not supported, ignored", cmd);
+            return Ok(());
+        }
+    };
     log::info!(target: "client", "Message: {:#?}", message);   
 
     Ok(())

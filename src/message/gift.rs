@@ -10,7 +10,7 @@ pub struct SendGiftInfo {
 
 impl TryFrom<RawLiveMessage> for SendGiftInfo {
     type Error = ();
-
+    
     fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
         let data = value.data.ok_or(())?;
         let user_id = data.get("uid").ok_or(())?.as_u64().ok_or(())?;
