@@ -1,5 +1,6 @@
 use std::io::BufRead;
 
+#[derive(Debug, Clone)]
 pub struct Config {
     pub room_id: u64,
     pub uid: Option<u64>,
