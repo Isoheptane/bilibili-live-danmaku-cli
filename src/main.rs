@@ -1,6 +1,7 @@
 use chrono::{TimeDelta, Utc};
 use colored::Colorize;
 use depack::DepackedMessage;
+use message::{LiveMessage, RawMessageDeserializeError};
 use simple_logger::SimpleLogger;
 use websocket::{ws::dataframe::DataFrame, Message, WebSocketError};
 use std::{env, io::ErrorKind, thread::sleep, time::Duration};
@@ -147,7 +148,7 @@ fn start_listening(
                     continue 'poll;
                 }
             };
-            process_message(message);
+            process_depacked_message(message);
         };
         // Fetch out websocket errors
         let error = match error {
@@ -173,6 +174,35 @@ fn start_listening(
     }
 }
 
-fn process_message(message: DepackedMessage) {
+fn process_depacked_message(message: DepackedMessage) {
+    // Display certificate resp and heartbeat resp ony in debug
+    let messages = match message {
+        DepackedMessage::CertificateResp => {
+            log::debug!(target: "client", "Received certificate response");
+            return;
+        },
+        DepackedMessage::HeartbeatResp(count) => {
+            log::debug!(target: "client", "Received heartbeat response ({})", count);
+            return;
+        },
+        DepackedMessage::LiveMessages(messages) => messages
+    };
+    for raw_message in messages {
+        let live_message = match LiveMessage::try_from(raw_message) {
+            Ok(x) => x,
+            Err(RawMessageDeserializeError::NotSupported(cmd)) => {
+                log::debug!(target: "client", "Ignoring unsupported command type {:#}", cmd);
+                continue;
+            },
+            Err(RawMessageDeserializeError::DeserializeError) => {
+                log::debug!(target: "client", "Failed to deserialize raw message into live message");
+                continue;
+            }
+        };
+        process_live_message(live_message);
+    }
+}
 
+fn process_live_message(message: LiveMessage) {
+    log::info!(target: "client", "{:#?}", message);
 }
