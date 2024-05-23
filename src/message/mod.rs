@@ -1,11 +1,12 @@
 mod danmaku;
 mod gift;
+mod live;
 
 use derive_more::Display;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
-use self::{danmaku::DanmakuInfo, gift::SendGiftInfo};
+use self::{danmaku::DanmakuInfo, gift::SendGiftInfo, live::{LiveOfflineInfo, LiveOnlineInfo}};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct RawLiveMessage {
@@ -37,6 +38,8 @@ impl std::error::Error for RawMessageDeserializeError {
 pub enum LiveMessage {
     Danmaku (DanmakuInfo),
     SendGift (SendGiftInfo),
+    Online (LiveOnlineInfo),
+    Offline (LiveOfflineInfo),
 }
 
 impl TryFrom<RawLiveMessage> for LiveMessage {
@@ -46,6 +49,8 @@ impl TryFrom<RawLiveMessage> for LiveMessage {
         match value.cmd.as_str() {
             "DANMU_MSG" => DanmakuInfo::try_from(value).map(|value| Self::Danmaku(value)),
             "SEND_GIFT" => SendGiftInfo::try_from(value).map(|value| Self::SendGift(value)),
+            "LIVE"      => LiveOnlineInfo::try_from(value).map(|value| Self::Online(value)),
+            "PREPARING" => LiveOfflineInfo::try_from(value).map(|value| Self::Offline(value)),
             _ => { return Err(RawMessageDeserializeError::NotSupported(value.cmd)) }
         }
         .map_err(|_| RawMessageDeserializeError::DeserializeError)

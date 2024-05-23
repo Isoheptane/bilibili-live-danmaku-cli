@@ -216,15 +216,21 @@ fn process_live_message(message: LiveMessage) {
                 "<{}> {}",
                 username,
                 info.text
-            )
-        }
+            );
+        },
         LiveMessage::SendGift(info) => {
             println!(
                 "* {} 投餵了 {} 個 {}",
                 info.username.bright_yellow(),
                 info.count.to_string().bright_green(),
                 info.gift_name.bright_magenta(),
-            )
+            );
+        },
+        LiveMessage::Online(_) => {
+            println!("* {}", "直播開始了".bright_green());
+        },
+        LiveMessage::Offline(_) => {
+            println!("* {}", "直播結束了".bright_red());
         }
     }
 }
