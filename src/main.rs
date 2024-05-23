@@ -231,6 +231,14 @@ fn process_live_message(message: LiveMessage) {
         },
         LiveMessage::Offline(_) => {
             println!("* {}", "直播結束了".bright_red());
+        },
+        LiveMessage::Welcome(info) => {
+            println!("* {} 進入了直播間", info.username.bright_red());
         }
+        LiveMessage::WelcomeGuard(info) => {
+            println!("* {} 進入了直播間", info.username.on_bright_blue());
+        }
+        #[allow(unreachable_patterns)]
+        _ => {}
     }
 }

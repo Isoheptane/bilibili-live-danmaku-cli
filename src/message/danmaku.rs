@@ -6,10 +6,10 @@ use super::RawLiveMessage;
 pub struct DanmakuInfo {
     pub user_id: u64,
     pub username: String,
-    pub text: String,
     pub is_admin: bool,
     pub is_vip: bool,
     pub guard_level: u64,
+    pub text: String,
 }
 
 impl TryFrom<RawLiveMessage> for DanmakuInfo {
