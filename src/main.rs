@@ -217,41 +217,48 @@ fn process_live_message(message: LiveMessage) {
 
     match message {
         LiveMessage::LiveStart(_) => {
-            println!("* {}", "直播開始了".bright_green());
+            println!(" * {}", "直播開始了".bright_green());
         }
         LiveMessage::LiveStop(_) => {
-            println!("* {}", "直播結束了".bright_red());
+            println!(" * {}", "直播結束了".bright_red());
         }
         LiveMessage::Welcome(info) => {
             let username = match info.is_admin {
                 true => info.username.bright_red(),
                 false => info.username.bright_green(),
             };
-            println!("* {} 進入了直播間", username);
+            println!(" * {} 進入了直播間", username);
         }
         LiveMessage::WelcomeGuard(info) => {
-            println!("* {} 進入了直播間", get_colored_name(&info.username, info.guard_level));
+            println!(" * {} 進入了直播間", get_colored_name(&info.username, info.guard_level));
         }
         LiveMessage::Warning(info) => {
-            println!("* {} {}", "超管警告".bright_red(), info.message.bright_red())
+            println!(" * {} {}", "超管警告".bright_red(), info.message.bright_red())
         }
         LiveMessage::LiveCutOff(info) => {
-            println!("* {} {}", "直播被切斷".bright_red(), info.message.bright_red())
+            println!(" * {} {}", "直播被切斷".bright_red(), info.message.bright_red())
         }
         LiveMessage::Danmaku(info) => {
             let username = match (info.is_admin, info.guard_level) {
                 (true, _) => info.username.bright_red(),
                 (false, level) => get_colored_name(&info.username, level)
             };
+            let badge_text = match info.badge {
+                Some(badge) => {
+                    format!("[{} {}] ", badge.badge_name, badge.level)
+                }
+                None => "".to_string()
+            };
             println!(
-                "<{}> {}",
+                "{}{}\n : {}",
+                badge_text,
                 username,
                 info.text
             );
         }
         LiveMessage::SendGift(info) => {
             println!(
-                "* {} 投餵了 {} 個 {}",
+                " * {} 投餵了 {} 個 {}",
                 info.username.bright_green(),
                 info.count.to_string().bright_yellow(),
                 info.gift_name.bright_magenta(),
@@ -268,19 +275,19 @@ fn process_live_message(message: LiveMessage) {
         LiveMessage::Interact(info) => {
             match info.interact_type {
                 InteractType::Enter => {
-                    println!("* {} 進入了直播間", info.username.bright_green())
+                    println!(" * {} 進入了直播間", info.username.bright_green())
                 }
                 InteractType::Follow => {
-                    println!("* {} 關注了你", info.username.bright_green())
+                    println!(" * {} 關注了你", info.username.bright_green())
                 }
                 InteractType::Share => {
-                    println!("* {} 分享了直播間", info.username.bright_green())
+                    println!(" * {} 分享了直播間", info.username.bright_green())
                 }
                 InteractType::SpecialFollow => {
-                    println!("* {} 特別關注了你", info.username.bright_green())
+                    println!(" * {} 特別關注了你", info.username.bright_green())
                 }
                 InteractType::MutualFollow => {
-                    println!("* {} 互關了你", info.username.bright_green())
+                    println!(" * {} 互關了你", info.username.bright_green())
                 }
             }
         }
@@ -291,7 +298,7 @@ fn process_live_message(message: LiveMessage) {
                 GuardLevel::Governor => "總督",
             };
             println!(
-                "* {} 成為了 {} ({} 個月)",
+                " * {} 成為了 {} ({} 個月)",
                 get_colored_name(&info.username, Some(info.guard_level)),
                 get_colored_name(guard_name, Some(info.guard_level)),
                 info.count.to_string().bright_yellow()
