@@ -7,13 +7,21 @@ use derive_more::Display;
 use serde::Deserialize;
 use serde_json::{Map, Value};
 
-use self::{danmaku::DanmakuInfo, gift::SendGiftInfo, live::{LiveOfflineInfo, LiveOnlineInfo}, welcome::{WelcomeGuardInfo, WelcomeInfo}};
+use danmaku::DanmakuInfo;
+use gift::SendGiftInfo;
+use live::{LiveStartInfo, LiveStopInfo};
+use welcome::{WelcomeInfo, WelcomeGuardInfo};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct RawLiveMessage {
     pub cmd: String,
+    /*
+        roomid can be either String or Number.
+        I definitely don't know why & how does
+        the devs in bilibili thinks.
+    */
     #[serde(rename = "roomid")]
-    pub room_id: Option<u64>,
+    pub room_id: Option<Value>,
     pub msg: Option<String>,
     pub info: Option<Vec<Value>>,
     pub data: Option<Map<String, Value>>
@@ -39,8 +47,8 @@ impl std::error::Error for RawMessageDeserializeError {
 pub enum LiveMessage {
     Danmaku (DanmakuInfo),
     SendGift (SendGiftInfo),
-    Online (LiveOnlineInfo),
-    Offline (LiveOfflineInfo),
+    LiveStart (LiveStartInfo),
+    LiveStop (LiveStopInfo),
     Welcome (WelcomeInfo),
     WelcomeGuard (WelcomeGuardInfo)
 }
@@ -52,8 +60,8 @@ impl TryFrom<RawLiveMessage> for LiveMessage {
         match value.cmd.as_str() {
             "DANMU_MSG"     => DanmakuInfo::try_from(value).map(|value| Self::Danmaku(value)),
             "SEND_GIFT"     => SendGiftInfo::try_from(value).map(|value| Self::SendGift(value)),
-            "LIVE"          => LiveOnlineInfo::try_from(value).map(|value| Self::Online(value)),
-            "PREPARING"     => LiveOfflineInfo::try_from(value).map(|value| Self::Offline(value)),
+            "LIVE"          => LiveStartInfo::try_from(value).map(|value| Self::LiveStart(value)),
+            "PREPARING"     => LiveStopInfo::try_from(value).map(|value| Self::LiveStop(value)),
             "WELCOME"       => WelcomeInfo::try_from(value).map(|value| Self::Welcome(value)),
             "WELCOME_GUARD" => WelcomeGuardInfo::try_from(value).map(|value| Self::WelcomeGuard(value)),
             _ => { return Err(RawMessageDeserializeError::NotSupported(value.cmd)) }

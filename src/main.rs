@@ -226,10 +226,10 @@ fn process_live_message(message: LiveMessage) {
                 info.gift_name.bright_magenta(),
             );
         },
-        LiveMessage::Online(_) => {
+        LiveMessage::LiveStart(_) => {
             println!("* {}", "直播開始了".bright_green());
         },
-        LiveMessage::Offline(_) => {
+        LiveMessage::LiveStop(_) => {
             println!("* {}", "直播結束了".bright_red());
         },
         LiveMessage::Welcome(info) => {
