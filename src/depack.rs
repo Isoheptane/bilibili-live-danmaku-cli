@@ -82,7 +82,7 @@ pub fn depack_packets(header: PacketHeader, body: &[u8]) -> Result<DepackedMessa
         if header.packet_type == PacketType::CertificateResp as u32 {
             Ok(DepackedMessage::CertificateResp)
         } else if header.packet_type == PacketType::HeartbeatResp as u32 {
-            if body.len() <= 4 {
+            if body.len() < 4 {
                 Err(PacketDepackError::DeserializeError(None))
             } else {
                 let count = 
