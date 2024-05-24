@@ -205,13 +205,30 @@ fn process_depacked_message(message: DepackedMessage) {
 
 fn process_live_message(message: LiveMessage) {
 
-    //  Get colored name of a guard
+    // Get colored name of a guard
     fn get_colored_name(name: &str, guard_level: Option<GuardLevel>) -> ColoredString {
         match guard_level {
             None => name.bright_green(),
             Some(GuardLevel::Captain) => name.bright_blue(),
             Some(GuardLevel::Commander) => name.bright_purple(),
             Some(GuardLevel::Governor) => name.bright_yellow(),
+        }
+    }
+
+    // Get colored badge message
+    fn get_colored_badge_name(name: &str, badge_level: u64) -> ColoredString {
+        match badge_level {
+            (1..=4)     => name.green(),
+            (5..=8)     => name.blue(),
+            (9..=12)    => name.magenta(),
+            (13..=16)   => name.red(),
+            (17..=20)   => name.yellow(),
+            (21..=24)   => name.bright_green(),
+            (25..=28)   => name.bright_blue(),
+            (29..=32)   => name.bright_magenta(),
+            (33..=36)   => name.bright_red(),
+            (37..=40)   => name.bright_yellow(),
+            _           => name.clear(),
         }
     }
 
@@ -245,7 +262,7 @@ fn process_live_message(message: LiveMessage) {
             };
             let badge_text = match info.badge {
                 Some(badge) => {
-                    format!("[{} {}] ", badge.badge_name, badge.level)
+                    format!("[{} {}] ", get_colored_badge_name(&badge.badge_name, badge.level), badge.level)
                 }
                 None => "".to_string()
             };
