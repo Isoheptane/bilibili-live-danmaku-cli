@@ -1,6 +1,6 @@
 use serde_json::Value;
 
-use super::RawLiveMessage;
+use super::{guard::GuardLevel, RawLiveMessage};
 
 #[derive(Debug)]
 pub struct DanmakuInfo {
@@ -8,7 +8,7 @@ pub struct DanmakuInfo {
     pub username: String,
     pub is_admin: bool,
     pub is_vip: bool,
-    pub guard_level: u64,
+    pub guard_level: Option<GuardLevel>,
     pub text: String,
 }
 
@@ -23,7 +23,7 @@ impl TryFrom<RawLiveMessage> for DanmakuInfo {
         let username = user_info.get(1).ok_or(())?.as_str().ok_or(())?;
         let is_admin = user_info.get(2).ok_or(())?.as_u64().is_some_and(|value| value == 1);
         let is_vip = user_info.get(3).ok_or(())?.as_u64().is_some_and(|value| value == 1);
-        let guard_level = info.get(7).ok_or(())?.as_u64().ok_or(())?;
+        let guard_level: Option<GuardLevel> = info.get(7).ok_or(())?.as_u64().ok_or(())?.try_into().ok();
         Ok(
             DanmakuInfo {
                 user_id,

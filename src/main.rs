@@ -14,7 +14,7 @@ mod message;
 use packet::{http::*, ws::*};
 use config::Config;
 
-use crate::{depack::depack_packets, message::interact::InteractType};
+use crate::{depack::depack_packets, message::{guard::GuardLevel, interact::InteractType}};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     SimpleLogger::new().with_level(log::LevelFilter::Info).env().with_timestamp_format(
@@ -206,13 +206,12 @@ fn process_depacked_message(message: DepackedMessage) {
 fn process_live_message(message: LiveMessage) {
 
     //  Get colored name of a guard
-    fn get_colored_name(name: String, guard_level: u64) -> ColoredString {
+    fn get_colored_name(name: String, guard_level: Option<GuardLevel>) -> ColoredString {
         match guard_level {
-            0 => name.bright_green(),
-            1 => name.bright_blue(),
-            2 => name.bright_purple(),
-            3 => name.bright_yellow(),
-            _ => name.bright_green(),
+            None => name.bright_green(),
+            Some(GuardLevel::Captain) => name.bright_blue(),
+            Some(GuardLevel::Commander) => name.bright_purple(),
+            Some(GuardLevel::Governor) => name.bright_yellow(),
         }
     }
 
@@ -253,7 +252,7 @@ fn process_live_message(message: LiveMessage) {
         LiveMessage::SendGift(info) => {
             println!(
                 "* {} 投餵了 {} 個 {}",
-                info.username.bright_yellow(),
+                info.username.bright_green(),
                 info.count.to_string().bright_yellow(),
                 info.gift_name.bright_magenta(),
             );
@@ -284,6 +283,9 @@ fn process_live_message(message: LiveMessage) {
                     println!("* {} 互關了你", info.username.bright_green())
                 }
             }
+        }
+        LiveMessage::GuardBuy(info) => {
+            
         }
         #[allow(unreachable_patterns)]
         _ => {}

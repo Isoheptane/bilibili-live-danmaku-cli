@@ -1,5 +1,6 @@
 pub mod danmaku;
 pub mod gift;
+pub mod guard;
 pub mod interact;
 pub mod live;
 pub mod super_chat;
@@ -8,15 +9,18 @@ pub mod welcome;
 
 use derive_more::Display;
 use serde::Deserialize;
-use serde_json::{Map, Value};
+use serde_json::Value;
 
 use danmaku::DanmakuInfo;
 use gift::SendGiftInfo;
+use guard::GuardBuyInfo;
 use interact::InteractInfo;
 use live::{LiveStartInfo, LiveStopInfo, LiveCutOffInfo};
 use super_chat::SuperChatInfo;
 use warning::WarningInfo;
 use welcome::{WelcomeInfo, WelcomeGuardInfo};
+
+use self::gift::GiftTopInfo;
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct RawLiveMessage {
@@ -30,7 +34,7 @@ pub struct RawLiveMessage {
     pub room_id: Option<Value>,
     pub msg: Option<String>,
     pub info: Option<Vec<Value>>,
-    pub data: Option<Map<String, Value>>
+    pub data: Option<Value>
 }
 
 #[derive(Debug, Display)]
@@ -61,6 +65,8 @@ pub enum LiveMessage {
     SendGift        (SendGiftInfo),
     SuperChat       (SuperChatInfo),
     Interact        (InteractInfo),
+    GuardBuy        (GuardBuyInfo),
+    GiftTop         (GiftTopInfo),
 }
 
 impl TryFrom<RawLiveMessage> for LiveMessage {
@@ -79,6 +85,8 @@ impl TryFrom<RawLiveMessage> for LiveMessage {
             "SUPER_CHAT_MESSAGE" | "SUPER_CHAT_MESSAGE_JP"
                             => SuperChatInfo::try_from(value).map(|value| Self::SuperChat(value)),
             "INTERACT_WORD" => InteractInfo::try_from(value).map(|value| Self::Interact(value)),
+            "GUARD_BUY"     => GuardBuyInfo::try_from(value).map(|value| Self::GuardBuy(value)),
+            "GIFT_TOP"      => GiftTopInfo::try_from(value).map(|value| Self::GiftTop(value)),
             _ => { return Err(RawMessageDeserializeError::NotSupported(value.cmd)) },
         }
         .map_err(|_| RawMessageDeserializeError::DeserializeError)

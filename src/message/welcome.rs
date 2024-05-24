@@ -1,4 +1,4 @@
-use super::RawLiveMessage;
+use super::{guard::GuardLevel, RawLiveMessage};
 
 #[derive(Debug)]
 pub struct WelcomeInfo {
@@ -29,7 +29,7 @@ impl TryFrom<RawLiveMessage> for WelcomeInfo {
 pub struct WelcomeGuardInfo {
     pub user_id: u64,
     pub username: String,
-    pub guard_level: u64,
+    pub guard_level: Option<GuardLevel>,
 }
 
 impl TryFrom<RawLiveMessage> for WelcomeGuardInfo {
@@ -39,7 +39,7 @@ impl TryFrom<RawLiveMessage> for WelcomeGuardInfo {
         let data = value.data.ok_or(())?;
         let user_id = data.get("uid").ok_or(())?.as_u64().ok_or(())?;
         let username = data.get("uname").ok_or(())?.as_str().ok_or(())?;
-        let guard_level = data.get("guard_level").ok_or(())?.as_u64().ok_or(())?;
+        let guard_level: Option<GuardLevel> = data.get("guard_level").ok_or(())?.as_u64().ok_or(())?.try_into().ok();
         Ok(
             WelcomeGuardInfo {
                 user_id,
