@@ -298,6 +298,12 @@ fn process_live_message(message: LiveMessage) {
             );
         }
         #[allow(unreachable_patterns)]
-        _ => {}
+        other => {
+            log::debug!(
+                target: "client",
+                "Ignored message that doesn't support display: {:#?}",
+                other
+            )
+        }
     }
 }
