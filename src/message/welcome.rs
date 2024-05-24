@@ -1,6 +1,5 @@
 use super::RawLiveMessage;
 
-
 #[derive(Debug)]
 pub struct WelcomeInfo {
     pub user_id: u64,

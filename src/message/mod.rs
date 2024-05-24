@@ -1,6 +1,7 @@
 mod danmaku;
 mod gift;
 mod live;
+mod warning;
 mod welcome;
 
 use derive_more::Display;
@@ -11,6 +12,8 @@ use danmaku::DanmakuInfo;
 use gift::SendGiftInfo;
 use live::{LiveStartInfo, LiveStopInfo};
 use welcome::{WelcomeInfo, WelcomeGuardInfo};
+
+use self::{live::LiveCutOffInfo, warning::WarningInfo};
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct RawLiveMessage {
@@ -45,12 +48,14 @@ impl std::error::Error for RawMessageDeserializeError {
 
 #[derive(Debug)]
 pub enum LiveMessage {
-    Danmaku (DanmakuInfo),
-    SendGift (SendGiftInfo),
-    LiveStart (LiveStartInfo),
-    LiveStop (LiveStopInfo),
-    Welcome (WelcomeInfo),
-    WelcomeGuard (WelcomeGuardInfo)
+    Danmaku         (DanmakuInfo),
+    SendGift        (SendGiftInfo),
+    LiveStart       (LiveStartInfo),
+    LiveStop        (LiveStopInfo),
+    LiveCutOff      (LiveCutOffInfo),
+    Welcome         (WelcomeInfo),
+    WelcomeGuard    (WelcomeGuardInfo),
+    Warning         (WarningInfo)
 }
 
 impl TryFrom<RawLiveMessage> for LiveMessage {
@@ -62,8 +67,10 @@ impl TryFrom<RawLiveMessage> for LiveMessage {
             "SEND_GIFT"     => SendGiftInfo::try_from(value).map(|value| Self::SendGift(value)),
             "LIVE"          => LiveStartInfo::try_from(value).map(|value| Self::LiveStart(value)),
             "PREPARING"     => LiveStopInfo::try_from(value).map(|value| Self::LiveStop(value)),
+            "CUT_OFF"       => LiveCutOffInfo::try_from(value).map(|value| Self::LiveCutOff(value)),
             "WELCOME"       => WelcomeInfo::try_from(value).map(|value| Self::Welcome(value)),
             "WELCOME_GUARD" => WelcomeGuardInfo::try_from(value).map(|value| Self::WelcomeGuard(value)),
+            "WARNING"       => WarningInfo::try_from(value).map(|value| Self::Warning(value)),
             _ => { return Err(RawMessageDeserializeError::NotSupported(value.cmd)) }
         }
         .map_err(|_| RawMessageDeserializeError::DeserializeError)
