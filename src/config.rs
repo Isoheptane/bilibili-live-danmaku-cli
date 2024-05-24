@@ -20,8 +20,11 @@ impl Config {
             })
         }
         
-        let room_id: u64 = read_after(&args, "--room-id").unwrap().parse().unwrap();
-        let uid: Option<u64> = read_after(&args, "--uid").map(|uid| uid.parse().unwrap());
+        let room_id: u64 = read_after(&args, "--room-id")
+            .expect("Room ID is required")
+            .parse()
+            .expect("Invalid room ID");
+        let uid: Option<u64> = read_after(&args, "--uid").map(|uid| uid.parse().expect("Invalid user UID"));
         let sessdata: Option<String> = read_after(&args, "--sessdata")
             .and_then(|data| {
                 if data == "-" {
