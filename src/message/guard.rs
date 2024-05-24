@@ -1,6 +1,6 @@
 use super::RawLiveMessage;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum GuardLevel {
     Captain     = 1,    // 艦長
     Commander   = 2,    // 提督

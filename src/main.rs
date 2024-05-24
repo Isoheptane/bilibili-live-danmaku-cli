@@ -206,7 +206,7 @@ fn process_depacked_message(message: DepackedMessage) {
 fn process_live_message(message: LiveMessage) {
 
     //  Get colored name of a guard
-    fn get_colored_name(name: String, guard_level: Option<GuardLevel>) -> ColoredString {
+    fn get_colored_name(name: &str, guard_level: Option<GuardLevel>) -> ColoredString {
         match guard_level {
             None => name.bright_green(),
             Some(GuardLevel::Captain) => name.bright_blue(),
@@ -230,7 +230,7 @@ fn process_live_message(message: LiveMessage) {
             println!("* {} 進入了直播間", username);
         }
         LiveMessage::WelcomeGuard(info) => {
-            println!("* {} 進入了直播間", get_colored_name(info.username, info.guard_level));
+            println!("* {} 進入了直播間", get_colored_name(&info.username, info.guard_level));
         }
         LiveMessage::Warning(info) => {
             println!("* {} {}", "超管警告".bright_red(), info.message.bright_red())
@@ -241,7 +241,7 @@ fn process_live_message(message: LiveMessage) {
         LiveMessage::Danmaku(info) => {
             let username = match (info.is_admin, info.guard_level) {
                 (true, _) => info.username.bright_red(),
-                (false, level) => get_colored_name(info.username, level)
+                (false, level) => get_colored_name(&info.username, level)
             };
             println!(
                 "<{}> {}",
@@ -285,7 +285,17 @@ fn process_live_message(message: LiveMessage) {
             }
         }
         LiveMessage::GuardBuy(info) => {
-            
+            let guard_name = match info.guard_level {
+                GuardLevel::Captain => "艦長",
+                GuardLevel::Commander => "提督",
+                GuardLevel::Governor => "總督",
+            };
+            println!(
+                "* {} 成為了 {} ({} 個月)",
+                get_colored_name(&info.username, Some(info.guard_level)),
+                get_colored_name(guard_name, Some(info.guard_level)),
+                info.count.to_string().bright_yellow()
+            );
         }
         #[allow(unreachable_patterns)]
         _ => {}

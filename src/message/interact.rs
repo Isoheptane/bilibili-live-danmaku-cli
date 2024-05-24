@@ -1,6 +1,6 @@
 use super::RawLiveMessage;
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 #[repr(u64)]
 pub enum InteractType {
     Enter           = 1,
