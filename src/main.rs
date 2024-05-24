@@ -14,7 +14,7 @@ mod message;
 use packet::{http::*, ws::*};
 use config::Config;
 
-use crate::depack::depack_packets;
+use crate::{depack::depack_packets, message::interact::InteractType};
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     SimpleLogger::new().with_level(log::LevelFilter::Info).env().with_timestamp_format(
@@ -217,6 +217,24 @@ fn process_live_message(message: LiveMessage) {
     }
 
     match message {
+        LiveMessage::LiveStart(_) => {
+            println!("* {}", "直播開始".bright_green());
+        }
+        LiveMessage::LiveStop(_) => {
+            println!("* {}", "直播結束".bright_red());
+        }
+        LiveMessage::Welcome(info) => {
+            println!("* {} 進入了直播間", info.username.bright_red());
+        }
+        LiveMessage::WelcomeGuard(info) => {
+            println!("* {} 進入了直播間", get_colored_name(info.username, info.guard_level));
+        }
+        LiveMessage::Warning(info) => {
+            println!("* {} {}", "超管警告".bright_red(), info.message.bright_red())
+        }
+        LiveMessage::LiveCutOff(info) => {
+            println!("* {} {}", "直播被切斷".bright_red(), info.message.bright_red())
+        }
         LiveMessage::Danmaku(info) => {
             let username = match (info.is_admin, info.guard_level) {
                 (true, _) => info.username.bright_red(),
@@ -227,7 +245,7 @@ fn process_live_message(message: LiveMessage) {
                 username,
                 info.text
             );
-        },
+        }
         LiveMessage::SendGift(info) => {
             println!(
                 "* {} 投餵了 {} 個 {}",
@@ -235,18 +253,33 @@ fn process_live_message(message: LiveMessage) {
                 info.count.to_string().bright_yellow(),
                 info.gift_name.bright_magenta(),
             );
-        },
-        LiveMessage::LiveStart(_) => {
-            println!("* {}", "直播開始了".bright_green());
-        },
-        LiveMessage::LiveStop(_) => {
-            println!("* {}", "直播結束了".bright_red());
-        },
-        LiveMessage::Welcome(info) => {
-            println!("* {} 進入了直播間", info.username.bright_red());
         }
-        LiveMessage::WelcomeGuard(info) => {
-            println!("* {} 進入了直播間", get_colored_name(info.username, info.guard_level));
+        LiveMessage::SuperChat(info) => {
+            println!(
+                "({}) <{}> {}",
+                format!("$ {:.2}", info.price).bright_yellow(),
+                info.username.bright_green(),
+                info.message.bright_yellow(),
+            )
+        }
+        LiveMessage::Interact(info) => {
+            match info.interact_type {
+                InteractType::Enter => {
+                    println!("* {} 進入了直播間", info.username.bright_green())
+                }
+                InteractType::Follow => {
+                    println!("* {} 關注了你", info.username.bright_green())
+                }
+                InteractType::Share => {
+                    println!("* {} 分享了直播間", info.username.bright_green())
+                }
+                InteractType::SpecialFollow => {
+                    println!("* {} 特別關注了你", info.username.bright_green())
+                }
+                InteractType::MutualFollow => {
+                    println!("* {} 互關了你", info.username.bright_green())
+                }
+            }
         }
         #[allow(unreachable_patterns)]
         _ => {}
