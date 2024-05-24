@@ -218,13 +218,17 @@ fn process_live_message(message: LiveMessage) {
 
     match message {
         LiveMessage::LiveStart(_) => {
-            println!("* {}", "直播開始".bright_green());
+            println!("* {}", "直播開始了".bright_green());
         }
         LiveMessage::LiveStop(_) => {
-            println!("* {}", "直播結束".bright_red());
+            println!("* {}", "直播結束了".bright_red());
         }
         LiveMessage::Welcome(info) => {
-            println!("* {} 進入了直播間", info.username.bright_red());
+            let username = match info.is_admin {
+                true => info.username.bright_red(),
+                false => info.username.bright_green(),
+            };
+            println!("* {} 進入了直播間", username);
         }
         LiveMessage::WelcomeGuard(info) => {
             println!("* {} 進入了直播間", get_colored_name(info.username, info.guard_level));
