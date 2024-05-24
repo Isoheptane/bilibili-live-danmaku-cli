@@ -1,5 +1,5 @@
 use chrono::{TimeDelta, Utc};
-use colored::Colorize;
+use colored::{ColoredString, Colorize};
 use depack::DepackedMessage;
 use message::{LiveMessage, RawMessageDeserializeError};
 use simple_logger::SimpleLogger;
@@ -204,13 +204,23 @@ fn process_depacked_message(message: DepackedMessage) {
 }
 
 fn process_live_message(message: LiveMessage) {
+
+    //  Get colored name of a guard
+    fn get_colored_name(name: String, guard_level: u64) -> ColoredString {
+        match guard_level {
+            0 => name.bright_green(),
+            1 => name.bright_blue(),
+            2 => name.bright_purple(),
+            3 => name.bright_yellow(),
+            _ => name.bright_green(),
+        }
+    }
+
     match message {
         LiveMessage::Danmaku(info) => {
             let username = match (info.is_admin, info.guard_level) {
                 (true, _) => info.username.bright_red(),
-                (false, 0) => info.username.bright_green(),
-                (false, 1) => info.username.bright_cyan(),
-                (false, _) => info.username.bright_purple(),
+                (false, level) => get_colored_name(info.username, level)
             };
             println!(
                 "<{}> {}",
@@ -222,7 +232,7 @@ fn process_live_message(message: LiveMessage) {
             println!(
                 "* {} 投餵了 {} 個 {}",
                 info.username.bright_yellow(),
-                info.count.to_string().bright_green(),
+                info.count.to_string().bright_yellow(),
                 info.gift_name.bright_magenta(),
             );
         },
@@ -236,7 +246,7 @@ fn process_live_message(message: LiveMessage) {
             println!("* {} 進入了直播間", info.username.bright_red());
         }
         LiveMessage::WelcomeGuard(info) => {
-            println!("* {} 進入了直播間", info.username.on_bright_blue());
+            println!("* {} 進入了直播間", get_colored_name(info.username, info.guard_level));
         }
         #[allow(unreachable_patterns)]
         _ => {}
