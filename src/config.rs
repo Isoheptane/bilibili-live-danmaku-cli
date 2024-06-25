@@ -40,7 +40,7 @@ impl Config {
             });
         let enable_gift_combo: bool = args.contains(&"--gift-combo".to_string());
         let gift_combo_interval_ms: u64 = read_after(&args, "--combo-interval")
-            .map(|interval| interval.parse().expect("Invalid interval time")).unwrap_or(1500);
+            .map(|interval| interval.parse().expect("Invalid interval time")).unwrap_or(2000);
         let gift_combo_refresh: bool = args.contains(&"--refresh-combo".to_string());
         Config {
             room_id,
