@@ -1,6 +1,6 @@
 use super::RawLiveMessage;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct SendGiftInfo {
     pub user_id: u64,
     pub username: String,

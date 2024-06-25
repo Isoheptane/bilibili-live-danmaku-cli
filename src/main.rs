@@ -1,5 +1,6 @@
 use chrono::{TimeDelta, Utc};
 use colored::{ColoredString, Colorize};
+use context::LiveContext;
 use depack::DepackedMessage;
 use message::{LiveMessage, RawMessageDeserializeError};
 use simple_logger::SimpleLogger;
@@ -7,6 +8,7 @@ use websocket::{ws::dataframe::DataFrame, Message, WebSocketError};
 use std::{env, io::ErrorKind, thread::sleep, time::Duration};
 
 mod config;
+mod context;
 mod depack;
 mod packet;
 mod message;
@@ -45,7 +47,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let danmaku_info_data: DanmakuInfoData = agent.get(
             &format!("https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id={}", room_id)
     )
-        .set("Cookie", format!("SESSDATA={}", config.sessdata.unwrap_or_default()).as_str())
+        .set("Cookie", format!("SESSDATA={}", config.sessdata.clone().unwrap_or_default()).as_str())
         .call()
         .expect("Failed to request for room_init data")
         .into_json::<HttpAPIResponse<DanmakuInfoData>>()
@@ -68,14 +70,16 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         "Initializing connection to {} ...",
         host_url.bright_green()
     );
+
+    let mut context = LiveContext::new();
     
     loop {
-        if let Err(e) = start_listening(room_id, config.uid.unwrap_or(0), &token, &host_url) {
+        if let Err(e) = start_listening(room_id, config.uid.unwrap_or(0), &token, &host_url, &config, &mut context) {
             log::warn!(target: "init", "Error occured in the connection: \n {}", e.to_string());
         } else {
             log::warn!(target: "init", "Connection closed by server");
         }
-        log::warn!(target: "init", "Trying to reconnect after 5 seconds");
+        log::warn!(target: "init", "Reconnect after 5 seconds...");
         sleep(Duration::from_secs(5));
     }
 }
@@ -84,7 +88,9 @@ fn start_listening(
     room_id: u64,
     uid: u64,
     token: &str,
-    host_url: &str
+    host_url: &str,
+    config: &Config,
+    context: &mut LiveContext
 ) -> Result<(), Box<dyn std::error::Error>> {
 
     let mut client = websocket::ClientBuilder::new(host_url).unwrap()
@@ -122,6 +128,26 @@ fn start_listening(
                 );
             }
         }
+        // Check context events
+        for info in context.gift_list.get_expired() {
+            if info.event_count > 1 {
+                println!(
+                    " * {} 總共投餵了 {} 個 {}",
+                    info.username.bright_green(),
+                    info.gift_count.to_string().bright_yellow(),
+                    info.gift_name.bright_magenta(),
+                );
+            } else {
+                println!(
+                    " * {} 投餵了 {} 個 {}",
+                    info.username.bright_green(),
+                    info.gift_count.to_string().bright_yellow(),
+                    info.gift_name.bright_magenta(),
+                );
+            }
+            context.gift_list.remove(&info);
+        }
+
         // Read all packets
         let error = 'poll: loop {
             let msg = match client.recv_message() {
@@ -148,7 +174,7 @@ fn start_listening(
                     continue 'poll;
                 }
             };
-            process_depacked_message(message);
+            process_depacked_message(message, config, context);
         };
         // Fetch out websocket errors
         let error = match error {
@@ -174,7 +200,11 @@ fn start_listening(
     }
 }
 
-fn process_depacked_message(message: DepackedMessage) {
+fn process_depacked_message(
+    message: DepackedMessage, 
+    config: &Config, 
+    context: &mut LiveContext
+) {
     // Display certificate resp and heartbeat resp ony in debug
     let messages = match message {
         DepackedMessage::CertificateResp => {
@@ -199,11 +229,15 @@ fn process_depacked_message(message: DepackedMessage) {
                 continue;
             }
         };
-        process_live_message(live_message);
+        process_live_message(live_message, config, context);
     }
 }
 
-fn process_live_message(message: LiveMessage) {
+fn process_live_message(
+    message: LiveMessage, 
+    config: &Config, 
+    context: &mut LiveContext
+) {
 
     // Get colored name of a guard
     fn get_colored_name(name: &str, guard_level: Option<GuardLevel>) -> ColoredString {
@@ -274,12 +308,29 @@ fn process_live_message(message: LiveMessage) {
             );
         }
         LiveMessage::SendGift(info) => {
+            if config.enable_gift_combo {
+                // Only show notification when refresh is enabled
+                if !context.gift_list.contains_info(&info) && config.gift_combo_refresh {
+                    println!(
+                        " * {} 投餵了 {}",
+                        info.username.bright_green(),
+                        info.gift_name.bright_magenta()
+                    );
+                }
+                context.gift_list.append_gift(
+                    info, 
+                    TimeDelta::milliseconds(config.gift_combo_interval_ms as i64), 
+                    config.gift_combo_refresh
+                );
+            }
+            /*
             println!(
                 " * {} 投餵了 {} 個 {}",
                 info.username.bright_green(),
                 info.count.to_string().bright_yellow(),
                 info.gift_name.bright_magenta(),
             );
+            */
         }
         LiveMessage::SuperChat(info) => {
             println!(

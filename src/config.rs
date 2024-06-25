@@ -5,6 +5,9 @@ pub struct Config {
     pub room_id: u64,
     pub uid: Option<u64>,
     pub sessdata: Option<String>,
+    pub enable_gift_combo: bool,
+    pub gift_combo_interval_ms: u64,
+    pub gift_combo_refresh: bool,
 }
 
 impl Config {
@@ -35,10 +38,17 @@ impl Config {
                     Some(data.clone())
                 }
             });
+        let enable_gift_combo: bool = args.contains(&"--gift-combo".to_string());
+        let gift_combo_interval_ms: u64 = read_after(&args, "--combo-interval")
+            .map(|interval| interval.parse().expect("Invalid interval time")).unwrap_or(1500);
+        let gift_combo_refresh: bool = args.contains(&"--refresh-combo".to_string());
         Config {
             room_id,
             uid,
-            sessdata
+            sessdata,
+            enable_gift_combo,
+            gift_combo_interval_ms,
+            gift_combo_refresh
         }
     }
 }
