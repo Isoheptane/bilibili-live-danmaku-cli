@@ -130,7 +130,7 @@ fn start_listening(
         }
         // Check context events
         for info in context.gift_list.get_expired() {
-            if info.event_count > 1 {
+            if config.gift_combo_refresh && info.event_count > 1 {
                 println!(
                     " * {} 總共投餵了 {} 個 {}",
                     info.username.bright_green(),
