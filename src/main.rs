@@ -322,15 +322,14 @@ fn process_live_message(
                     TimeDelta::milliseconds(config.gift_combo_interval_ms as i64), 
                     config.gift_combo_refresh
                 );
+            } else {
+                println!(
+                    " * {} 投餵了 {} 個 {}",
+                    info.username.bright_green(),
+                    info.count.to_string().bright_yellow(),
+                    info.gift_name.bright_magenta(),
+                );
             }
-            /*
-            println!(
-                " * {} 投餵了 {} 個 {}",
-                info.username.bright_green(),
-                info.count.to_string().bright_yellow(),
-                info.gift_name.bright_magenta(),
-            );
-            */
         }
         LiveMessage::SuperChat(info) => {
             println!(
