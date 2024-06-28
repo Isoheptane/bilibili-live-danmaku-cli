@@ -8,6 +8,7 @@ pub struct Config {
     pub enable_gift_combo: bool,
     pub gift_combo_interval_ms: u64,
     pub gift_combo_refresh: bool,
+    pub poll_interval_ms: u64,
 }
 
 impl Config {
@@ -22,12 +23,14 @@ impl Config {
                 }
             })
         }
-        
+        // room_id
         let room_id: u64 = read_after(&args, "--room-id")
             .expect("Room ID is required")
             .parse()
             .expect("Invalid room ID");
+        // uid
         let uid: Option<u64> = read_after(&args, "--uid").map(|uid| uid.parse().expect("Invalid user UID"));
+        // sessdata
         let sessdata: Option<String> = read_after(&args, "--sessdata")
             .and_then(|data| {
                 if data == "-" {
@@ -38,17 +41,23 @@ impl Config {
                     Some(data.clone())
                 }
             });
+        // gift combo feature
         let enable_gift_combo: bool = args.contains(&"--gift-combo".to_string());
         let gift_combo_interval_ms: u64 = read_after(&args, "--combo-interval")
             .map(|interval| interval.parse().expect("Invalid interval time")).unwrap_or(2000);
         let gift_combo_refresh: bool = args.contains(&"--refresh-combo".to_string());
+        // poll interval
+        let poll_interval_ms: u64 = read_after(&args, "--poll-interval")
+            .map(|interval| interval.parse().expect("Invalid interval time")).unwrap_or(200);
+        // Construct
         Config {
             room_id,
             uid,
             sessdata,
             enable_gift_combo,
             gift_combo_interval_ms,
-            gift_combo_refresh
+            gift_combo_refresh,
+            poll_interval_ms
         }
     }
 }

@@ -107,7 +107,7 @@ fn start_listening(
 
     'main: loop {
         // Poll interval
-        sleep(Duration::from_millis(200));
+        sleep(Duration::from_millis(config.poll_interval_ms));
         // Check heartbeat
         if last_heartbeat
             .checked_add_signed(TimeDelta::seconds(20))
