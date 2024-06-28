@@ -1,7 +1,7 @@
 # bilibili-live-danmaku-cli
 一個監視 Bilibili 直播彈幕和其它信息的命令行 (CLI) 工具。\
 
-[English](./README.md) | [中文](./README-zh.md)
+[English](./README.md) | **中文**
 
 ## 使用方式
 該程式使用 bilibili.com 上存儲的 SESSDATA (cookie) 進行身份驗證。你可以在你的瀏覽器中找到你的 SESSDATA。
@@ -17,7 +17,7 @@ cat SESSDATA.txt | ./bilibili-live-danmaku-cli --sessdata - --uid <UID> --room-i
 ./bilibili-live-danmaku-cli --room-id <ROOM_ID>
 ```
 
-## Arguments
+## 參數
 ### `--room-id <ROOM_ID>`
 指定直播間 ID。該參數是必需的。
 
