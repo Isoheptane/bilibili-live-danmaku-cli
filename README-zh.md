@@ -1,5 +1,5 @@
 # bilibili-live-danmaku-cli
-一個監視 Bilibili 直播彈幕和其它信息的命令行 (CLI) 工具。\
+一個監視 Bilibili 直播彈幕和其它信息的輕量級命令行 (CLI) 工具。
 
 [English](./README.md) | **中文**
 

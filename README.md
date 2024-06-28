@@ -1,5 +1,5 @@
 # bilibili-live-danmaku-cli
-This is a command line interface tool for monitoring danmaku and other live messages on Bilibili Live.
+This is a light-weight command line interface tool for monitoring danmaku and other live messages on Bilibili Live.
 
 **English** | [中文](./README-zh.md)
 
