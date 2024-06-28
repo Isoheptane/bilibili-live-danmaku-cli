@@ -33,14 +33,14 @@ Enable gift combo feature. This feature will combine multiple gift message withi
 Only gift messages from same audience with same gift name are combined.
 
 ### `--combo-interval <INTERVAL_MS>`
-Specifies the gift message combining interval in miliseconds. If this argument is not specified, it will default to 2000 ms.
+Specifies the gift message combining interval in milliseconds. If this argument is not specified, it will default to 2000 ms.
 
 ### `--refresh-combo`
 Enable combo refreshing. Combine interval will extend when new gift messages are received.
 
 A notification message will be shown when a combing interval begins.
 
-### `--poll-interval`
-Specifies the message poll interval of live WebSocket stream. If this argument is not specified, it will default to 200 ms.
+### `--poll-interval <INTERVAL_MS>`
+Specifies the message poll interval of live WebSocket stream in milliseconds. If this argument is not specified, it will default to 200 ms.
 
 Since this tool do not utilize multithreading or async frameworks, the poll interval is also the tick interval. At every tick, this tool will check heartbeat and gift message combining. It's recommended to set a short poll interval.
