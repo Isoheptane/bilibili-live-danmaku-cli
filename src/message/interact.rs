@@ -10,7 +10,8 @@ pub enum InteractType {
     MutualFollow    = 5,
 }
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug, Clone)]
 pub struct InteractInfo {
     pub user_id: u64,
     pub username: String,

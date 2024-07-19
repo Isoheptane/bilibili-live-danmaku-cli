@@ -1,6 +1,7 @@
 use super::RawLiveMessage;
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug, Clone)]
 pub struct SuperChatInfo {
     pub user_id: u64,
     pub username: String,

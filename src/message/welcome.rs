@@ -1,6 +1,7 @@
 use super::{guard::GuardLevel, RawLiveMessage};
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug, Clone)]
 pub struct WelcomeInfo {
     pub user_id: u64,
     pub username: String,
@@ -25,7 +26,8 @@ impl TryFrom<RawLiveMessage> for WelcomeInfo {
     }
 }
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug, Clone)]
 pub struct WelcomeGuardInfo {
     pub user_id: u64,
     pub username: String,

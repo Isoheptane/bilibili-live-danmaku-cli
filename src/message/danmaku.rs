@@ -2,7 +2,8 @@ use serde_json::Value;
 
 use super::{guard::GuardLevel, RawLiveMessage};
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug, Clone)]
 pub struct DanmakuInfo {
     pub user_id: u64,
     pub username: String,
@@ -55,7 +56,8 @@ impl TryFrom<RawLiveMessage> for DanmakuInfo {
     }
 }
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug, Clone)]
 pub struct BadgeInfo {
     pub badge_name: String,
     pub level: u64,

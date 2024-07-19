@@ -1,6 +1,7 @@
 use super::RawLiveMessage;
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug, Clone)]
 pub struct WarningInfo {
     pub message: String
 }

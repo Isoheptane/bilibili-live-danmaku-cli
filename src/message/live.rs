@@ -1,6 +1,7 @@
 use super::RawLiveMessage;
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug, Clone)]
 pub struct LiveStartInfo {
     pub room_id: u64
 }
@@ -17,7 +18,8 @@ impl TryFrom<RawLiveMessage> for LiveStartInfo {
     }
 }
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug, Clone)]
 pub struct LiveStopInfo {
     /*
         For Live Offline Message, roomid can be a string
@@ -37,7 +39,8 @@ impl TryFrom<RawLiveMessage> for LiveStopInfo {
     }
 }
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug, Clone)]
 pub struct LiveCutOffInfo {
     pub message: String
 }

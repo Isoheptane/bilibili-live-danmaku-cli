@@ -1,5 +1,6 @@
 use super::RawLiveMessage;
 
+#[allow(unused)]
 #[derive(Debug, Clone)]
 pub struct SendGiftInfo {
     pub user_id: u64,
@@ -28,14 +29,16 @@ impl TryFrom<RawLiveMessage> for SendGiftInfo {
     }
 }
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug, Clone)]
 pub struct GiftRankInfo {
     pub user_id: u64,
     pub username: String,
     pub coin: u64,
 }
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug, Clone)]
 pub struct GiftTopInfo {
     pub ranks: Vec<GiftRankInfo>
 }

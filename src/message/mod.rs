@@ -53,7 +53,8 @@ impl std::error::Error for RawMessageDeserializeError {
 }
 
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug, Clone)]
 pub enum LiveMessage {
     LiveStart       (LiveStartInfo),
     LiveStop        (LiveStopInfo),

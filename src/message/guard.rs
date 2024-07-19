@@ -20,7 +20,8 @@ impl TryFrom<u64> for GuardLevel {
     }
 }
 
-#[derive(Debug)]
+#[allow(unused)]
+#[derive(Debug, Clone)]
 pub struct GuardBuyInfo {
     pub user_id: u64,
     pub username: String,
