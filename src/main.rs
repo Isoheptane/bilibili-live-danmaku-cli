@@ -45,6 +45,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         target: "main",
         "Requested real room ID: {}", room_id.to_string().bright_green()
     );
+    log::info!(
+        target: "main",
+        "Starting bot with chat ID {}", config.chat_id.to_string().bright_green()
+    );
     // Get danmaku info data
     let danmaku_info_data: DanmakuInfoData = agent.get(
         &format!("https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id={}", room_id)
@@ -88,8 +92,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
 fn send_message(config: &Config, message: String) -> req::Response {
     let url = format!("https://api.telegram.org/bot{}/sendMessage", config.bot_token);
+    println!("{}", message);
     let response = req::Client::new()
         .post(&url)
+        .header("Content-Type", "application/x-www-form-urlencoded")
         .form(&[
             ("chat_id", config.chat_id.to_string().as_str()),
             ("text", message.as_str()),
@@ -263,9 +269,9 @@ fn process_live_message(
     fn get_leveled_name(name: &str, guard_level: Option<GuardLevel>) -> String {
         match guard_level {
             None => format!("{}", name),
-            Some(GuardLevel::Captain) => format!("🛳🛳️ {} (舰长)", name),
-            Some(GuardLevel::Commander) => format!("⛴️ {} (提督)", name),
-            Some(GuardLevel::Governor) => format!("⛴️ {} (总督)", name),
+            Some(GuardLevel::Captain) => format!("🛳🛳️ {}", name),
+            Some(GuardLevel::Commander) => format!("⛴️ {}", name),
+            Some(GuardLevel::Governor) => format!("⛴️ {}", name),
         }
     }
 
@@ -397,31 +403,31 @@ fn process_live_message(
                 InteractType::Enter => {
                     send_message(
                         config,
-                        format!("<i> * <b>{}</b> 进入了直播间<i>", info.username),
+                        format!("<i> * <b>{}</b> 进入了直播间</i>", info.username),
                     );
                 }
                 InteractType::Follow => {
                     send_message(
                         config,
-                        format!("<i> * <b>{}</b> 关注了主播<i>", info.username),
+                        format!("<i> * <b>{}</b> 关注了主播</i>", info.username),
                     );
                 }
                 InteractType::Share => {
                     send_message(
                         config,
-                        format!("<i> * <b>{}</b> 分享了直播间<i>", info.username),
+                        format!("<i> * <b>{}</b> 分享了直播间</i>", info.username),
                     );
                 }
                 InteractType::SpecialFollow => {
                     send_message(
                         config,
-                        format!("<i> * <b>{}</b> 特别关注了主播<i>", info.username),
+                        format!("<i> * <b>{}</b> 特别关注了主播</i>", info.username),
                     );
                 }
                 InteractType::MutualFollow => {
                     send_message(
                         config,
-                        format!("<i> * <b>{}</b> 互关了主播<i>", info.username),
+                        format!("<i> * <b>{}</b> 互关了主播</i>", info.username),
                     );
                 }
             }
