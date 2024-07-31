@@ -9,6 +9,8 @@ pub struct Config {
     pub gift_combo_interval_ms: u64,
     pub gift_combo_refresh: bool,
     pub poll_interval_ms: u64,
+    pub bot_token: String,
+    pub chat_id: u64,
 }
 
 impl Config {
@@ -49,6 +51,12 @@ impl Config {
         // poll interval
         let poll_interval_ms: u64 = read_after(&args, "--poll-interval")
             .map(|interval| interval.parse().expect("Invalid interval time")).unwrap_or(200);
+        // telegram chat id
+        let chat_id: u64 = read_after(&args, "--chat_id").map(
+            |uid| uid.parse().expect("Invalid Chat ID")
+        ).expect("Chat ID is required");
+        // bot token
+        let bot_token: String = read_after(&args, "--chat_id").expect("Bot Token is required").clone();
         // Construct
         Config {
             room_id,
@@ -57,7 +65,9 @@ impl Config {
             enable_gift_combo,
             gift_combo_interval_ms,
             gift_combo_refresh,
-            poll_interval_ms
+            poll_interval_ms,
+            bot_token,
+            chat_id,
         }
     }
 }
