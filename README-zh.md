@@ -56,11 +56,6 @@ cat SESSDATA.txt | ./bilibili-live-danmaku-cli --sessdata - --uid <UID> --room-i
 ### `--combo-interval <INTERVAL_MS>`
 指定合併區間的長度（以毫秒計）。如果該參數未提供，則預設為 2000 毫秒。
 
-### `--refresh-combo`
-啟用連擊刷新功能。當收到新的禮物消息時，合併區間會延長。
-
-當合併開始時，將會顯示一個提醒消息。
-
 ### `--poll-interval <INTERVAL_MS>`
 指定從直播 WebSocket 流中拉取消息的時間間隔（以毫秒計）。如果該參數未提供，則預設為 200 毫秒。
 

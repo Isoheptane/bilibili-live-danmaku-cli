@@ -14,8 +14,6 @@ pub struct Config {
     pub enable_gift_combo: bool,
     #[serde(rename = "comboInterval")]
     pub gift_combo_interval_ms: u64,
-    #[serde(rename = "comboRefresh")]
-    pub gift_combo_refresh: bool,
     #[serde(rename = "pollInterval")]
     pub poll_interval_ms: u64,
 }
@@ -55,7 +53,6 @@ impl Config {
         let enable_gift_combo: bool = args.contains(&"--gift-combo".to_string());
         let gift_combo_interval_ms: u64 = read_after(&args, vec!["--combo-interval"])
             .map(|interval| interval.parse().expect("Invalid interval time")).unwrap_or(2000);
-        let gift_combo_refresh: bool = args.contains(&"--refresh-combo".to_string());
         // poll interval
         let poll_interval_ms: u64 = read_after(&args, vec!["--poll-interval"])
             .map(|interval| interval.parse().expect("Invalid interval time")).unwrap_or(200);
@@ -66,7 +63,6 @@ impl Config {
             sessdata,
             enable_gift_combo,
             gift_combo_interval_ms,
-            gift_combo_refresh,
             poll_interval_ms
         }
     }

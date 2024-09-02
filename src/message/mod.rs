@@ -52,6 +52,22 @@ impl std::error::Error for RawMessageDeserializeError {
     }
 }
 
+#[allow(unused)]
+#[derive(Debug, Clone, Copy)]
+pub enum LiveMessageType {
+    LiveStart,
+    LiveStop,
+    LiveCutOff,
+    Welcome,
+    WelcomeGuard,
+    Warning,
+    Danmaku,
+    SendGift,
+    SuperChat,
+    Interact,
+    GuardBuy,
+    GiftTop,
+}
 
 #[allow(unused)]
 #[derive(Debug, Clone)]

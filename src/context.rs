@@ -18,6 +18,7 @@ pub struct SendGiftList {
     gifts: HashMap<(u64, String), CombinedSendGiftInfo>,
 }
 
+#[allow(unused)]
 impl SendGiftList {
     pub fn contains_info(&self, info: &SendGiftInfo) -> bool{
         self.gifts.contains_key(&(info.user_id, info.gift_name.clone()))

@@ -130,21 +130,12 @@ fn start_listening(
         }
         // Check context events
         for info in context.gift_list.get_expired() {
-            if config.gift_combo_refresh && info.event_count > 1 {
-                println!(
-                    " * {} 總共投餵了 {} 個 {}",
-                    info.username.bright_green(),
-                    info.gift_count.to_string().bright_yellow(),
-                    info.gift_name.bright_magenta(),
-                );
-            } else {
-                println!(
-                    " * {} 投餵了 {} 個 {}",
-                    info.username.bright_green(),
-                    info.gift_count.to_string().bright_yellow(),
-                    info.gift_name.bright_magenta(),
-                );
-            }
+            println!(
+                " * {} 投餵了 {} 個 {}",
+                info.username.bright_green(),
+                info.gift_count.to_string().bright_yellow(),
+                info.gift_name.bright_magenta(),
+            );
             context.gift_list.remove(&info);
         }
 
@@ -309,18 +300,10 @@ fn process_live_message(
         }
         LiveMessage::SendGift(info) => {
             if config.enable_gift_combo {
-                // Only show notification when refresh is enabled
-                if !context.gift_list.contains_info(&info) && config.gift_combo_refresh {
-                    println!(
-                        " * {} 投餵了 {}",
-                        info.username.bright_green(),
-                        info.gift_name.bright_magenta()
-                    );
-                }
                 context.gift_list.append_gift(
                     info, 
                     TimeDelta::milliseconds(config.gift_combo_interval_ms as i64), 
-                    config.gift_combo_refresh
+                    false
                 );
             } else {
                 println!(

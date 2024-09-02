@@ -4,6 +4,5 @@
     "sessdata": "<YOUR_SESSDATA_COOKIE>",
     "giftCombo": true,
     "comboInterval": 2000,
-    "comboRefresh": false,
     "pollInterval": 200
 }

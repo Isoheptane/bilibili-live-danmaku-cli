@@ -56,11 +56,6 @@ Only gift messages from same audience with same gift name are combined.
 ### `--combo-interval <INTERVAL_MS>`
 Specifies the gift message combining interval in milliseconds. If this argument is not specified, it will default to 2000 ms.
 
-### `--refresh-combo`
-Enable combo refreshing. Combine interval will extend when new gift messages are received.
-
-A notification message will be shown when a combing interval begins.
-
 ### `--poll-interval <INTERVAL_MS>`
 Specifies the message poll interval of live WebSocket stream in milliseconds. If this argument is not specified, it will default to 200 ms.
 
