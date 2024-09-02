@@ -8,13 +8,34 @@
 ```bash
 ./bilibili-live-danmaku-cli --sessdata <SESSDATA> --uid <UID> --room-id <ROOM_ID>
 ```
+
 為增強安全性，該應用程式也可以從標準輸入流 (stdin) 讀取 SESSDATA。您可以從一個文本檔中讀取 SESSDATA 並將其作為該程式的輸入。
 ```bash
 cat SESSDATA.txt | ./bilibili-live-danmaku-cli --sessdata - --uid <UID> --room-id <ROOM_ID>
 ```
+
+你也可以將參數寫入設定檔中。注意，如果指定從設定檔中讀取設定，該應用程式將會忽略其他命令行參數。
+```bash
+./bilibili-live-danmaku-cli --config config.json
+```
+
 您也可以以遊客身份加入直播間，但是請注意，你可能無法收到完整的消息信息。
 ```bash
 ./bilibili-live-danmaku-cli --room-id <ROOM_ID>
+```
+
+## 設定檔
+樣例設定檔：
+```json
+{
+    "roomId": 4793604,
+    "uid": 1939036,
+    "sessdata": "<YOUR_SESSDATA_COOKIE>",
+    "giftCombo": true,
+    "comboInterval": 2000,
+    "comboRefresh": false,
+    "pollInterval": 200
+}
 ```
 
 ## 參數
@@ -45,3 +66,5 @@ cat SESSDATA.txt | ./bilibili-live-danmaku-cli --sessdata - --uid <UID> --room-i
 
 由於該工具並未使用多執行緒技術或異步框架，拉取消息的時間間隔也是整個程式的刻間隔。在每一刻，該程式都會檢查心跳包和禮物消息合併。推薦設定一個較小的時間間隔。
 
+### `--config <FILE_PATH>`
+指定設定檔的路徑。如果指定了這個參數，該工具將會忽略其它命令行參數。

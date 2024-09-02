@@ -8,13 +8,34 @@ This tool use cookies (SESSDATA) on bilibili.com for authentication. You can fin
 ```bash
 ./bilibili-live-danmaku-cli --sessdata <SESSDATA> --uid <UID> --room-id <ROOM_ID>
 ```
+
 For better security, this tool can also read SESSDATA from standard input. You can read SESSDATA from a text file and use it as the input of this tool.
 ```bash
 cat SESSDATA.txt | ./bilibili-live-danmaku-cli --sessdata - --uid <UID> --room-id <ROOM_ID>
 ```
-You can also join a live room as guest. But notice that some you may not be able to receive full information of messages.
+
+Your can specify your arguments in a config file. Notice this tool will ignore other arguments in shell command if a config file is specified.
+```bash
+./bilibili-live-danmaku-cli --config config.json
+```
+
+You can join a live room as guest. But notice that some you may not be able to receive full information of messages.
 ```bash
 ./bilibili-live-danmaku-cli --room-id <ROOM_ID>
+```
+
+## Configuration File
+Example config file:
+```json
+{
+    "roomId": 4793604,
+    "uid": 1939036,
+    "sessdata": "<YOUR_SESSDATA_COOKIE>",
+    "giftCombo": true,
+    "comboInterval": 2000,
+    "comboRefresh": false,
+    "pollInterval": 200
+}
 ```
 
 ## Arguments
@@ -44,3 +65,6 @@ A notification message will be shown when a combing interval begins.
 Specifies the message poll interval of live WebSocket stream in milliseconds. If this argument is not specified, it will default to 200 ms.
 
 Since this tool do not utilize multithreading or async frameworks, the poll interval is also the tick interval. At every tick, this tool will check heartbeat and gift message combining. It's recommended to set a short poll interval.
+
+### `--config <FILE_PATH>`
+Specifies the configuration file path. If this argument is specified, this tool will ignore other shell arguments. 
