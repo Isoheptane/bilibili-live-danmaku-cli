@@ -1,0 +1,9 @@
+{
+    "roomId": 4793604,
+    "uid": 1939036,
+    "sessdata": "<YOUR_SESSDATA_COOKIE>",
+    "giftCombo": true,
+    "comboInterval": 2000,
+    "comboRefresh": false,
+    "pollInterval": 200
+}
