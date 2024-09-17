@@ -5,7 +5,7 @@ use serde_repr::{Deserialize_repr, Serialize_repr};
 pub struct HttpAPIResponse<T> {
     code: isize,
     message: String,
-    data: Option<T>
+    data: T
 }
 
 #[allow(dead_code, unused)]
@@ -16,7 +16,7 @@ impl<T> HttpAPIResponse<T> {
     pub fn ok(&self) -> bool {
         self.code == 0
     }
-    pub fn response_data(self) -> Option<T> {
+    pub fn response_data(self) -> T {
         self.data
     }
 }

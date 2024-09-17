@@ -1,6 +1,7 @@
 use std::io::Read;
+use derive_more::Display;
 
-use crate::{deserialize_packet, message::RawLiveMessage, PacketHeader, PacketType, Protocol};
+use crate::{message::RawLiveMessage, Packet, PacketConvertError, PacketHeader, PacketType, Protocol};
 
 pub enum DepackedMessage {
     CertificateResp,
@@ -8,36 +9,21 @@ pub enum DepackedMessage {
     LiveMessages(Vec<RawLiveMessage>)
 }
 
-#[derive(Debug)]
+#[derive(Debug, Display)]
 pub enum PacketDepackError {
     WrongType,
     DecompressError,
-    PacketDeserializeError,
-    DeserializeError(Option<Box<dyn std::error::Error>>)
-}
-
-impl std::fmt::Display for PacketDepackError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str("PacketProcessError {{ type: ")?;
-        match self {
-            Self::WrongType => f.write_str("WrongType")?,
-            Self::DecompressError => f.write_str("DecompressionError")?,
-            Self::PacketDeserializeError => f.write_str("PacketDeserializeError")?,
-            Self::DeserializeError(e) => f.write_str(
-                format!("DeserializeError, innerError: {:?}", e).as_str()
-            )?
-        };
-        write!(f, "}}")
-    }
+    PacketConvertError(PacketConvertError),
+    BodyDeserializeError,
 }
 
 impl std::error::Error for PacketDepackError {
-    fn description(&self) -> &str {
-        match self {
-            Self::WrongType => "Packet type does not match",
-            Self::DecompressError => "Failed to decompress data",
-            Self::PacketDeserializeError => "Failed to deserialize packet header and body",
-            Self::DeserializeError(_) => "Failed to deserialize packet body",
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match &self {
+            Self::WrongType => None,
+            Self::DecompressError => None,
+            Self::PacketConvertError(e) => Some(e),
+            Self::BodyDeserializeError => None,
         }
     }
 }
@@ -46,44 +32,49 @@ fn resolve_command_packet(header: PacketHeader, body: &[u8]) -> Result<RawLiveMe
     if header.packet_type != PacketType::Command as u32 {
         return Err(PacketDepackError::WrongType);
     }
+    // log::debug!("Resolving command packet: {:#?}\n{:?}", header, body);
     let json = String::from_utf8(body.to_vec())
-        .map_err(|e| PacketDepackError::DeserializeError(Some(e.into())))?;
+        .map_err(|_| PacketDepackError::BodyDeserializeError)?;
     log::trace!(target: "client", "Processing JSON string: {:#?}", json);
     let raw_live_message: RawLiveMessage = serde_json::from_str(&json)
-        .map_err(|e| PacketDepackError::DeserializeError(Some(e.into())))?;
+        .map_err(|_| PacketDepackError::BodyDeserializeError)?;
     Ok(raw_live_message)
 }
 
 pub fn depack_packets(header: PacketHeader, body: &[u8]) -> Result<DepackedMessage, PacketDepackError> {
     if header.protocol == Protocol::CommandBrotli as u16 {
+        // Brotli compressed live message
         let mut data: Vec<u8> = vec![];
         brotli::Decompressor::new(body, 4096)
             .read_to_end(&mut data)
             .map_err(|_| PacketDepackError::DecompressError)?;
         let total_length: usize = data.len();
-        let mut read_len: usize = 0;
+        let mut read_len: usize = 0; 
         let mut live_messages = vec![];
         while read_len < total_length {
-            let (header, body) = match deserialize_packet(&data) {
+            // Read depacked message from read_len
+            let packet = match Packet::from_binary(&data[read_len..]) {
                 Ok(x) => x,
-                Err(_) => { return Err(PacketDepackError::PacketDeserializeError); }
+                Err(e) => { return Err(PacketDepackError::PacketConvertError(e)); }
             };
-            read_len += body.len() + 16;
-            if header.protocol != Protocol::Command as u16 {
+            // Read length
+            read_len += packet.header.total_size as usize;
+            if packet.header.protocol != Protocol::Command as u16 {
                 log::debug!(target: "client", "Ignored non-command packet in inner packets");
                 continue;
             }
-            live_messages.push(resolve_command_packet(header, body)?);
+            live_messages.push(resolve_command_packet(packet.header, &packet.body)?);
         };
         Ok(DepackedMessage::LiveMessages(live_messages))
     } else if header.protocol == Protocol::CommandZlib as u16 {
+        // Zlib compressed live message
         todo!()
     } else {
         if header.packet_type == PacketType::CertificateResp as u32 {
             Ok(DepackedMessage::CertificateResp)
         } else if header.packet_type == PacketType::HeartbeatResp as u32 {
             if body.len() < 4 {
-                Err(PacketDepackError::DeserializeError(None))
+                Err(PacketDepackError::BodyDeserializeError)
             } else {
                 let count = 
                     ((body[3] as u64) << 0) + 

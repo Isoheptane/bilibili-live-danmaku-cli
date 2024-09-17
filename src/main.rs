@@ -1,22 +1,28 @@
 use chrono::{TimeDelta, Utc};
+use client::LiveClient;
 use colored::{ColoredString, Colorize};
 use context::LiveContext;
 use depack::DepackedMessage;
 use message::{LiveMessage, RawMessageDeserializeError};
+use session_data::init_room_data;
 use simple_logger::SimpleLogger;
-use websocket::{ws::dataframe::DataFrame, Message, WebSocketError};
-use std::{env, io::ErrorKind, thread::sleep, time::Duration};
+use websocket::Message;
+use std::thread::sleep;
+use std::{env, time::Duration};
 
 mod config;
 mod context;
 mod depack;
 mod packet;
 mod message;
+mod session_data;
+mod client;
 
 use packet::{http::*, ws::*};
 use config::Config;
 
-use crate::{depack::depack_packets, message::{guard::GuardLevel, interact::InteractType}};
+use crate::message::{guard::GuardLevel, interact::InteractType};
+use crate::session_data::SessionData;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     SimpleLogger::new().with_level(log::LevelFilter::Info).env().with_timestamp_format(
@@ -25,56 +31,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Get arguments
     let config = Config::from_args(env::args().collect());
 
-    // Start calling APIs
-    let agent = ureq::builder().tls_connector(native_tls::TlsConnector::new().unwrap().into()).build();
-    // Get room data for the real room id
-    let room_data: RoomInitData = agent.get(
-        &format!("https://api.live.bilibili.com/room/v1/Room/room_init?id={}", config.room_id)
-    )
-        .call()
-        .expect("Failed to request for room_init data")
-        .into_json::<HttpAPIResponse<RoomInitData>>()
-        .expect("Failed to parse room_init json data")
-        .response_data()
-        .expect("Response data is empty");
+    let (session, hosts) = match init_room_data(config.room_id, config.uid, config.sessdata.clone()) {
+        Ok(result) => result,
+        Err(e) => panic!("Failed to initialize room data: {}", e)
+    };
 
-    let room_id = room_data.room_id;
-    log::info!(
-        target: "main",
-        "Requested real room ID: {}", room_id.to_string().bright_green()
-    );
-    // Get danmaku info data
-    let danmaku_info_data: DanmakuInfoData = agent.get(
-            &format!("https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?id={}", room_id)
-    )
-        .set("Cookie", format!("SESSDATA={}", config.sessdata.clone().unwrap_or_default()).as_str())
-        .call()
-        .expect("Failed to request for room_init data")
-        .into_json::<HttpAPIResponse<DanmakuInfoData>>()
-        .expect("Failed to parse danmaku_info json data")
-        .response_data()
-        .expect("Response data is empty");
-
-    log::info!(
-        target: "main",
-        "Requested token and WebSocket servers. {} servers available",
-        danmaku_info_data.host_list.len().to_string().bright_green()
-    );
-
-    // Get token and host uri
-    let token = danmaku_info_data.token;
-    let host = danmaku_info_data.host_list.get(0).expect("No available server in the list!").clone();
+    // Get host uri
+    let host = hosts.get(0).expect("No available server in the list!").clone();
     let host_url = format!("wss://{}:{}/sub", host.host, host.wss_port);
     log::info!(
         target: "main",
         "Initializing connection to {} ...",
         host_url.bright_green()
     );
-
-    let mut context = LiveContext::new();
     
     loop {
-        if let Err(e) = start_listening(room_id, config.uid.unwrap_or(0), &token, &host_url, &config, &mut context) {
+        if let Err(e) = start_listening(session.clone(), &host_url, &config) {
             log::warn!(target: "init", "Error occured in the connection: \n {}", e.to_string());
         } else {
             log::warn!(target: "init", "Connection closed by server");
@@ -85,27 +57,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 
 fn start_listening(
-    room_id: u64,
-    uid: u64,
-    token: &str,
+    session: SessionData,
     host_url: &str,
     config: &Config,
-    context: &mut LiveContext
 ) -> Result<(), Box<dyn std::error::Error>> {
 
-    let mut client = websocket::ClientBuilder::new(host_url).unwrap()
-        .connect_secure(None).unwrap();
-    // Client should work in nonblocking mode
-    client.set_nonblocking(true)?;
-    log::info!(target: "client", "Successfully connected to server");
+    let mut context = LiveContext::new();
+
+    let mut client = LiveClient::new(host_url, session)?;
+
+    log::info!(
+        target: "main",
+        "Connected to live room"
+    );
 
     let mut last_heartbeat = Utc::now();
-    // Send certificate
-    client.send_message(&Message::binary(certificate_packet(uid, room_id, token)?))?;
-    log::debug!(target: "client", "Certificate packet sent");
     // Main loop
-
-    'main: loop {
+    loop {
         // Poll interval
         sleep(Duration::from_millis(config.poll_interval_ms));
         // Check heartbeat
@@ -113,8 +81,8 @@ fn start_listening(
             .checked_add_signed(TimeDelta::seconds(20))
             .is_some_and(|time| Utc::now() > time) 
         {
-            let packet = heartbeat_packet();
-            if let Err(e) = client.send_message(&Message::binary(packet)) {
+            let packet = heartbeat_packet_binary();
+            if let Err(e) = client.send_message(Message::binary(packet)) {
                 log::warn!(
                     target: "client",
                     "Failed to send heartbeat packet:\n {}",
@@ -139,55 +107,20 @@ fn start_listening(
             context.gift_list.remove(&info);
         }
 
-        // Read all packets
-        let error = 'poll: loop {
-            let msg = match client.recv_message() {
-                Ok(x) => x,
-                Err(e) => break 'poll e
-            };
-            if msg.is_close() {
-                return Ok(());
+        let messages = match client.recv_messages() {
+            Ok(x) => x,
+            Err(e) => match e {
+                client::Error::ConnectionClosed => {
+                    return Ok(());
+                }
+                _ => {
+                    return Err(e.into())
+                }
             }
-            let data = msg.take_payload();
-            let (header, body) = match deserialize_packet(data.as_slice()) {
-                Ok(x) => x,
-                Err(_) => { continue; }
-            };
-            log::trace!(
-                target: "client", 
-                "Received packet: {:?}",
-                header
-            );
-            let message = match depack_packets(header, body) {
-                Ok(message) => message, 
-                Err(e) => {
-                    log::debug!(target: "client", "Failed to depack packets: {}", e);
-                    continue 'poll;
-                }
-            };
-            process_depacked_message(message, config, context);
         };
-        // Fetch out websocket errors
-        let error = match error {
-            WebSocketError::IoError(io_error) => {
-                // Continue main loop on blocking operations
-                if io_error.kind() == ErrorKind::WouldBlock {
-                    continue 'main;
-                } else {
-                    WebSocketError::IoError(io_error)
-                }
-            },
-            WebSocketError::NoDataAvailable => {
-                // Server disconnect
-                return Ok(());
-            },
-            e => e
-        };
-        log::warn!(
-            target: "client",
-            "Error occured when trying to poll message from WebSocet: {}",
-            error
-        )
+        for message in messages {
+            process_depacked_message(message, config, &mut context);
+        }
     }
 }
 

@@ -52,75 +52,78 @@ pub struct CertificateRespBody {
     pub code: i32
 }
 
-pub fn create_packet(
-    protocol: Protocol, 
-    packet_type: PacketType, 
-    body: &[u8]
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let config = bincode::options()
-        .with_fixint_encoding()
-        .with_big_endian();
-    let header = PacketHeader {
-        total_size: (body.len() + 16) as u32,
-        head_size: 16,
-        protocol: protocol as u16,
-        packet_type: packet_type as u32,
-        sequence: 1
-    };
-    let header_data = config.serialize(&header)?;
-    Ok([header_data, body.to_vec()].concat())
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Packet {
+    pub header: PacketHeader,
+    pub body: Vec<u8>
 }
 
-pub fn deserialize_packet(data: &[u8]) -> Result<(PacketHeader, &[u8]), Box<dyn std::error::Error>> {
-    if data.len() < 16 {
-        return Err(DeserializeFailedError {}.into());
+impl Packet {
+    pub fn create(protocol: Protocol, packet_type: PacketType, body: Vec<u8>) -> Self {
+        let header = PacketHeader {
+            total_size: (body.len() + 16) as u32,
+            head_size: 16,
+            protocol: protocol as u16,
+            packet_type: packet_type as u32,
+            sequence: 1
+        };
+        Packet { header, body }
     }
-    let config = bincode::options()
+
+    pub fn to_binary(&self) -> Result<Vec<u8>, bincode::Error> {
+        let config = bincode::options()
         .with_fixint_encoding()
         .with_big_endian();
-    let header: PacketHeader = config.deserialize(&data[..16])?;
-    let total_size = header.total_size as usize;
-    if data.len() < total_size {
-        return Err(DeserializeFailedError {}.into());
+        let header_binary = config.serialize(&self.header)?;
+        Ok([header_binary, self.body.clone()].concat())
     }
-    Ok((header, &data[16..total_size as usize]))
+
+    pub fn from_binary(data: &[u8]) -> Result<Packet, PacketConvertError> {
+        if data.len() < 16 {
+            return Err(PacketConvertError::PacketLengthError);
+        }
+        let config = bincode::options()
+        .with_fixint_encoding()
+        .with_big_endian();
+        let header: PacketHeader = config.deserialize(&data[..16]).map_err(|e| PacketConvertError::BinCodeError(e))?;
+        let total_size = header.total_size as usize;
+        if data.len() < total_size {
+            return Err(PacketConvertError::PacketLengthError);
+        }
+        let body = data[16..total_size as usize].to_vec();
+        Ok(Packet{ header, body })
+    }
+
+    pub fn new_certificate_packet(uid: u64, room_id: u64, token: &str) -> Result<Packet, PacketConvertError> {
+        let cert_body = CertificatePacketBody {
+            uid,
+            roomid: room_id,
+            key: token.to_string(),
+            protover: Protover::Brotli as u8
+        };
+        let cert_body = serde_json::ser::to_string(&cert_body).map_err(|_| PacketConvertError::BodySerializeError)?;
+        Ok(Packet::create(Protocol::Special, PacketType::Certificate, cert_body.as_bytes().to_vec()))
+    }
 }
 
 #[derive(Debug, Display)]
-pub struct DeserializeFailedError;
+pub enum PacketConvertError {
+    PacketLengthError,
+    BodySerializeError,
+    BinCodeError(bincode::Error),
+}
 
-impl std::error::Error for DeserializeFailedError {
-    fn cause(&self) -> Option<&dyn std::error::Error> {
-        None
-    }
-    fn description(&self) -> &str {
-        "Failed to deserialize packet"
-    }
+impl std::error::Error for PacketConvertError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
-        None
+        match &self {
+            Self::PacketLengthError => None,
+            Self::BodySerializeError => None,
+            Self::BinCodeError(e) => Some(e)
+        }
     }
 }
 
-pub fn certificate_packet(
-    uid: u64, 
-    room_id: u64, 
-    token: &str
-) -> Result<Vec<u8>, Box<dyn std::error::Error>> {
-    let cert_body = CertificatePacketBody {
-        uid,
-        roomid: room_id,
-        key: token.to_string(),
-        protover: Protover::Brotli as u8
-    };
-    let cert_body = serde_json::ser::to_string(&cert_body)?;
-    create_packet(
-        Protocol::Special, 
-        PacketType::Certificate, 
-        cert_body.as_bytes()
-    )
-}
-
-pub fn heartbeat_packet() -> &'static [u8] {
+pub fn heartbeat_packet_binary() -> &'static [u8] {
     &[
         0, 0, 0, 31,    // Total length 
         0, 16,          // Header size
