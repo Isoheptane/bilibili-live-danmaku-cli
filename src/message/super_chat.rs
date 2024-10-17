@@ -1,5 +1,5 @@
 use super::RawLiveMessage;
-use super::data::{UserInfo, GuardLevel};
+use super::data::UserInfo;
 
 #[allow(unused)]
 #[derive(Debug, Clone)]
@@ -18,16 +18,8 @@ impl TryFrom<RawLiveMessage> for SuperChatInfo {
         
         let data = value.data.ok_or(())?;
 
-        let user_id = data.get("uid").ok_or(())?.as_u64().ok_or(())?;
-        let user_info = data.get("user_info").ok_or(())?;
-        let username = user_info.get("uname").ok_or(())?.as_str().ok_or(())?;
-        let guard_level: Option<GuardLevel> = user_info.get("guard_level").ok_or(())?.as_u64().ok_or(())?.try_into().ok();
-        let user = UserInfo {
-            uid: user_id,
-            username: username.to_string(),
-            guard_level,
-            medal: None,
-        };
+        let uinfo = data.get("uinfo").ok_or(())?;
+        let user = UserInfo::try_from(uinfo)?;
 
         let message = data.get("message").ok_or(())?.as_str().ok_or(())?;
         let price = data.get("price").ok_or(())?.as_f64().ok_or(())?;
