@@ -16,7 +16,7 @@ impl TryFrom<RawLiveMessage> for SuperChatInfo {
     fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
         let data = value.data.ok_or(())?;
         let user_id = data.get("uid").ok_or(())?.as_u64().ok_or(())?;
-        let username = data.get("user_info").ok_or(())?.get("username").ok_or(())?.as_str().ok_or(())?;
+        let username = data.get("user_info").ok_or(())?.get("uname").ok_or(())?.as_str().ok_or(())?;
         let message = data.get("message").ok_or(())?.as_str().ok_or(())?;
         let price = data.get("price").ok_or(())?.as_f64().ok_or(())?;
         let keep_time = data.get("time").ok_or(())?.as_u64().ok_or(())?;

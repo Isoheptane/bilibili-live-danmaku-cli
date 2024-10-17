@@ -18,6 +18,7 @@ impl TryFrom<RawLiveMessage> for DanmakuInfo {
     type Error = ();
 
     fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
+        // log::info!("{}", value);
         let info = value.info.ok_or(())?;
 
         let text = info.get(1).ok_or(())?.as_str().ok_or(())?;
@@ -42,17 +43,18 @@ impl TryFrom<RawLiveMessage> for DanmakuInfo {
                 }
             )
         };
-        Ok(
-            DanmakuInfo {
-                user_id,
-                username: username.to_string(),
-                text: text.to_string(),
-                is_admin,
-                is_vip,
-                guard_level,
-                badge
-            }
-        )
+
+        let danmaku_info = DanmakuInfo {
+            user_id,
+            username: username.to_string(),
+            text: text.to_string(),
+            is_admin,
+            is_vip,
+            guard_level,
+            badge
+        };
+        log::debug!("Danmaku Received: {:#?}", danmaku_info);
+        Ok(danmaku_info)
     }
 }
 

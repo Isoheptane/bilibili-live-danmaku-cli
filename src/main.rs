@@ -148,8 +148,9 @@ fn process_depacked_message(
                 log::debug!(target: "client", "Ignored unsupported command type {:#?}", cmd);
                 continue;
             },
-            Err(RawMessageDeserializeError::DeserializeError) => {
-                log::debug!(target: "client", "Failed to deserialize raw message into live message");
+            Err(RawMessageDeserializeError::DeserializeError(message)) => {
+                log::warn!(target: "client", "Failed to deserialize raw message into live message");
+                log::warn!(target: "client", "Live message: {}", message);
                 continue;
             }
         };
@@ -275,11 +276,7 @@ fn process_live_message(
             }
         }
         LiveMessage::GuardBuy(info) => {
-            let guard_name = match info.guard_level {
-                GuardLevel::Captain => "艦長",
-                GuardLevel::Commander => "提督",
-                GuardLevel::Governor => "總督",
-            };
+            let guard_name = info.guard_level.name();
             println!(
                 " * {} 成為了 {} ({} 個月)",
                 get_colored_name(&info.username, Some(info.guard_level)),

@@ -2,9 +2,9 @@ use super::RawLiveMessage;
 
 #[derive(Debug, Clone, Copy)]
 pub enum GuardLevel {
-    Captain     = 1,    // 艦長
+    Captain     = 3,    // 艦長
     Commander   = 2,    // 提督
-    Governor    = 3,    // 總督
+    Governor    = 1,    // 總督
 }
 
 impl TryFrom<u64> for GuardLevel {
@@ -16,6 +16,16 @@ impl TryFrom<u64> for GuardLevel {
             2 => Ok(GuardLevel::Commander),
             3 => Ok(GuardLevel::Governor),
             _ => Err(())
+        }
+    }
+}
+
+impl GuardLevel {
+    pub fn name(&self) -> &'static str {
+        match self {
+            GuardLevel::Captain => "艦長",
+            GuardLevel::Commander => "提督",
+            GuardLevel::Governor => "總督",
         }
     }
 }
@@ -35,9 +45,9 @@ impl TryFrom<RawLiveMessage> for GuardBuyInfo {
     fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
         let data = value.data.ok_or(())?;
         let user_id = data.get("uid").ok_or(())?.as_u64().ok_or(())?;
-        let username = data.get("user_info").ok_or(())?.get("username").ok_or(())?.as_str().ok_or(())?;
+        let username = data.get("username").ok_or(())?.as_str().ok_or(())?;
         let guard_level: GuardLevel = data.get("guard_level").ok_or(())?.as_u64().ok_or(())?.try_into()?;
-        let count = data.get("guard_level").ok_or(())?.as_u64().ok_or(())?;
+        let count = data.get("num").ok_or(())?.as_u64().ok_or(())?;
         Ok(
             GuardBuyInfo {
                 user_id,
