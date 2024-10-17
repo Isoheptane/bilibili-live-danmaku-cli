@@ -26,19 +26,6 @@ use config::Config;
 use crate::session_data::SessionData;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
-
-    /*
-    println!(
-        "{} <{}> ({})\n : {}",
-        "醒目留言".bright_red(),
-        "CascadeKobayshi".bright
-        format!("$ {:.2}", 114.5 as f64).bright_yellow(),
-        "測試 Super Chat".bright_yellow(),
-    );
-
-    return Ok(());
-    */
-
     SimpleLogger::new().with_level(log::LevelFilter::Info).env().with_timestamp_format(
         time::macros::format_description!("[hour]:[minute]:[second]")
     ).init().unwrap();
@@ -264,11 +251,12 @@ fn process_live_message(
         }
         LiveMessage::SuperChat(info) => {
             println!(
-                "Super chat from ({}) <{}> {}",
-                format!("$ {:.1}", info.price).bright_yellow(),
+                "{} <{}> ({})\n : {}",
+                "醒目留言".bright_cyan(),
                 get_colored_name(&info.user.username, info.user.guard_level),
+                format!("${:.2} {}s", info.price, info.keep_time).bright_yellow(),
                 info.message.bright_yellow(),
-            )
+            );
         }
         LiveMessage::Interact(info) => {
             let colored_name = get_colored_name(&info.user.username, info.user.guard_level);
