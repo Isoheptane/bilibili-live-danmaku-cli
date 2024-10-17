@@ -1,3 +1,5 @@
+use crate::message::data::{GuardLevel, UserInfo};
+
 use super::RawLiveMessage;
 
 #[derive(Debug, Clone, Copy)]
@@ -13,8 +15,7 @@ pub enum InteractType {
 #[allow(unused)]
 #[derive(Debug, Clone)]
 pub struct InteractInfo {
-    pub user_id: u64,
-    pub username: String,
+    pub user: UserInfo,
     pub interact_type: InteractType
 }
 
@@ -23,8 +24,21 @@ impl TryFrom<RawLiveMessage> for InteractInfo {
     
     fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
         let data = value.data.ok_or(())?;
+
         let user_id = data.get("uid").ok_or(())?.as_u64().ok_or(())?;
         let username = data.get("uname").ok_or(())?.as_str().ok_or(())?;
+        let guard_level: Option<GuardLevel> = data
+            .get("uinfo").ok_or(())?
+            .get("guard").ok_or(())?
+            .get("level").ok_or(())?
+            .as_u64().ok_or(())?.try_into().ok();
+        let user = UserInfo {
+            uid: user_id,
+            username: username.to_string(),
+            guard_level,
+            medal: None
+        };
+
         let interact_type = match data.get("msg_type").ok_or(())?.as_u64().ok_or(())? {
             1 => InteractType::Enter,
             2 => InteractType::Follow,
@@ -35,8 +49,7 @@ impl TryFrom<RawLiveMessage> for InteractInfo {
         };
         Ok(
             InteractInfo {
-                user_id,
-                username: username.to_string(),
+                user,
                 interact_type
             }
         )

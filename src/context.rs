@@ -21,14 +21,14 @@ pub struct SendGiftList {
 #[allow(unused)]
 impl SendGiftList {
     pub fn contains_info(&self, info: &SendGiftInfo) -> bool{
-        self.gifts.contains_key(&(info.user_id, info.gift_name.clone()))
+        self.gifts.contains_key(&(info.user.uid, info.gift_name.clone()))
     }
     pub fn append_gift(&mut self, info: SendGiftInfo, expire_interval: TimeDelta, refresh_time: bool) {
-        let key = (info.user_id, info.gift_name.clone());
+        let key = (info.user.uid, info.gift_name.clone());
         let combined_info = self.gifts.entry(key).or_insert(
             CombinedSendGiftInfo { 
-                user_id: info.user_id,
-                username: info.username.clone(),
+                user_id: info.user.uid,
+                username: info.user.username.clone(),
                 gift_name: info.gift_name.clone(),
                 gift_count: 0,
                 event_count: 0,

@@ -1,4 +1,5 @@
-use super::{guard::GuardLevel, RawLiveMessage};
+use super::RawLiveMessage;
+use super::data::GuardLevel;
 
 #[allow(unused)]
 #[derive(Debug, Clone)]

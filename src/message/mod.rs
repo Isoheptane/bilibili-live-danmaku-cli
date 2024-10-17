@@ -6,6 +6,7 @@ pub mod live;
 pub mod super_chat;
 pub mod warning;
 pub mod welcome;
+pub mod data;
 
 use std::fmt::Display;
 

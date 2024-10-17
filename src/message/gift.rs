@@ -1,10 +1,10 @@
 use super::RawLiveMessage;
+use super::data::{UserInfo, GuardLevel};
 
 #[allow(unused)]
 #[derive(Debug, Clone)]
 pub struct SendGiftInfo {
-    pub user_id: u64,
-    pub username: String,
+    pub user: UserInfo,
     pub gift_name: String,
     pub count: u64
 }
@@ -14,14 +14,22 @@ impl TryFrom<RawLiveMessage> for SendGiftInfo {
     
     fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
         let data = value.data.ok_or(())?;
+
         let user_id = data.get("uid").ok_or(())?.as_u64().ok_or(())?;
         let username = data.get("uname").ok_or(())?.as_str().ok_or(())?;
+        let guard_level: Option<GuardLevel> = data.get("guard_level").ok_or(())?.as_u64().ok_or(())?.try_into().ok();
+        let user = UserInfo {
+            uid: user_id,
+            username: username.to_string(),
+            guard_level,
+            medal: None
+        };
+
         let gift_name = data.get("giftName").ok_or(())?.as_str().ok_or(())?;
         let count = data.get("num").ok_or(())?.as_u64().ok_or(())?;
         Ok(
             SendGiftInfo {
-                user_id,
-                username: username.to_string(),
+                user,
                 gift_name: gift_name.to_string(),
                 count
             }

@@ -3,6 +3,8 @@ use client::LiveClient;
 use colored::{ColoredString, Colorize};
 use context::LiveContext;
 use depack::DepackedMessage;
+use message::data::GuardLevel;
+use message::interact::InteractType;
 use message::{LiveMessage, RawMessageDeserializeError};
 use session_data::init_room_data;
 use simple_logger::SimpleLogger;
@@ -21,10 +23,22 @@ mod client;
 use packet::{http::*, ws::*};
 use config::Config;
 
-use crate::message::{guard::GuardLevel, interact::InteractType};
 use crate::session_data::SessionData;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+
+    /*
+    println!(
+        "{} <{}> ({})\n : {}",
+        "醒目留言".bright_red(),
+        "CascadeKobayshi".bright
+        format!("$ {:.2}", 114.5 as f64).bright_yellow(),
+        "測試 Super Chat".bright_yellow(),
+    );
+
+    return Ok(());
+    */
+
     SimpleLogger::new().with_level(log::LevelFilter::Info).env().with_timestamp_format(
         time::macros::format_description!("[hour]:[minute]:[second]")
     ).init().unwrap();
@@ -215,13 +229,13 @@ fn process_live_message(
             println!(" * {} {}", "直播被切斷".bright_red(), info.message.bright_red())
         }
         LiveMessage::Danmaku(info) => {
-            let username = match (info.is_admin, info.guard_level) {
-                (true, _) => info.username.bright_red(),
-                (false, level) => get_colored_name(&info.username, level)
+            let username = match (info.is_admin, info.user.guard_level) {
+                (true, _) => info.user.username.bright_red(),
+                (false, level) => get_colored_name(&info.user.username, level)
             };
-            let badge_text = match info.badge {
-                Some(badge) => {
-                    format!("[{} {}] ", get_colored_badge_name(&badge.badge_name, badge.level), badge.level)
+            let badge_text = match info.user.medal {
+                Some(medal) => {
+                    format!("[{} {}] ", get_colored_badge_name(&medal.medal_name, medal.level), medal.level)
                 }
                 None => "".to_string()
             };
@@ -242,7 +256,7 @@ fn process_live_message(
             } else {
                 println!(
                     " * {} 投餵了 {} 個 {}",
-                    info.username.bright_green(),
+                    get_colored_name(&info.user.username, info.user.guard_level),
                     info.count.to_string().bright_yellow(),
                     info.gift_name.bright_magenta(),
                 );
@@ -250,36 +264,27 @@ fn process_live_message(
         }
         LiveMessage::SuperChat(info) => {
             println!(
-                "({}) <{}> {}",
-                format!("$ {:.2}", info.price).bright_yellow(),
-                info.username.bright_green(),
+                "Super chat from ({}) <{}> {}",
+                format!("$ {:.1}", info.price).bright_yellow(),
+                get_colored_name(&info.user.username, info.user.guard_level),
                 info.message.bright_yellow(),
             )
         }
         LiveMessage::Interact(info) => {
+            let colored_name = get_colored_name(&info.user.username, info.user.guard_level);
             match info.interact_type {
-                InteractType::Enter => {
-                    println!(" * {} 進入了直播間", info.username.bright_green())
-                }
-                InteractType::Follow => {
-                    println!(" * {} 關注了你", info.username.bright_green())
-                }
-                InteractType::Share => {
-                    println!(" * {} 分享了直播間", info.username.bright_green())
-                }
-                InteractType::SpecialFollow => {
-                    println!(" * {} 特別關注了你", info.username.bright_green())
-                }
-                InteractType::MutualFollow => {
-                    println!(" * {} 互關了你", info.username.bright_green())
-                }
+                InteractType::Enter => println!(" * {} 進入了直播間", colored_name),
+                InteractType::Follow => println!(" * {} 關注了你", colored_name),
+                InteractType::Share => println!(" * {} 分.享了直播間", colored_name),
+                InteractType::SpecialFollow => println!(" * {} 特別關注了你", colored_name),
+                InteractType::MutualFollow => println!(" * {} 互關了你", colored_name),
             }
         }
         LiveMessage::GuardBuy(info) => {
             let guard_name = info.guard_level.name();
             println!(
                 " * {} 成為了 {} ({} 個月)",
-                get_colored_name(&info.username, Some(info.guard_level)),
+                get_colored_name(&info.user.username, Some(info.guard_level)),
                 get_colored_name(guard_name, Some(info.guard_level)),
                 info.count.to_string().bright_yellow()
             );
