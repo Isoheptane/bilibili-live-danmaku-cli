@@ -101,13 +101,13 @@ fn start_listening(
         for info in context.gift_list.get_expired() {
             println!(
                 " * {} 投餵了 {} 個 {}",
-                info.username.bright_green(),
+                info.user.username.bright_green(),
                 info.gift_count.to_string().bright_yellow(),
                 info.gift_name.bright_magenta(),
             );
             context.gift_list.remove(&info);
         }
-
+        // Process messages
         let messages = match client.recv_messages() {
             Ok(x) => x,
             Err(e) => match e {
@@ -164,34 +164,6 @@ fn process_live_message(
     config: &Config, 
     context: &mut LiveContext
 ) {
-
-    // Get colored name of a guard
-    fn get_colored_name(name: &str, guard_level: Option<GuardLevel>) -> ColoredString {
-        match guard_level {
-            None => name.bright_green(),
-            Some(GuardLevel::Captain) => name.bright_blue(),
-            Some(GuardLevel::Commander) => name.bright_purple(),
-            Some(GuardLevel::Governor) => name.bright_yellow(),
-        }
-    }
-
-    // Get colored badge message
-    fn get_colored_badge_name(name: &str, badge_level: u64) -> ColoredString {
-        match badge_level {
-            (1..=4)     => name.green(),
-            (5..=8)     => name.blue(),
-            (9..=12)    => name.magenta(),
-            (13..=16)   => name.red(),
-            (17..=20)   => name.yellow(),
-            (21..=24)   => name.bright_green(),
-            (25..=28)   => name.bright_blue(),
-            (29..=32)   => name.bright_magenta(),
-            (33..=36)   => name.bright_red(),
-            (37..=40)   => name.bright_yellow(),
-            _           => name.clear(),
-        }
-    }
-
     match message {
         LiveMessage::LiveStart(_) => {
             println!(" * {}", "直播開始了".bright_green());
@@ -285,5 +257,32 @@ fn process_live_message(
                 other
             )
         }
+    }
+}
+
+// Get colored name of a guard
+fn get_colored_name(name: &str, guard_level: Option<GuardLevel>) -> ColoredString {
+    match guard_level {
+        None => name.bright_green(),
+        Some(GuardLevel::Captain) => name.bright_blue(),
+        Some(GuardLevel::Commander) => name.bright_purple(),
+        Some(GuardLevel::Governor) => name.bright_yellow(),
+    }
+}
+
+// Get colored badge message
+fn get_colored_badge_name(name: &str, badge_level: u64) -> ColoredString {
+    match badge_level {
+        (1..=4)     => name.green(),
+        (5..=8)     => name.blue(),
+        (9..=12)    => name.magenta(),
+        (13..=16)   => name.red(),
+        (17..=20)   => name.yellow(),
+        (21..=24)   => name.bright_green(),
+        (25..=28)   => name.bright_blue(),
+        (29..=32)   => name.bright_magenta(),
+        (33..=36)   => name.bright_red(),
+        (37..=40)   => name.bright_yellow(),
+        _           => name.clear(),
     }
 }
