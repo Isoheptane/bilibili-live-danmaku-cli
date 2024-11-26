@@ -10,9 +10,9 @@ impl TryFrom<u64> for GuardLevel {
 
     fn try_from(value: u64) -> Result<Self, Self::Error> {
         match value {
-            1 => Ok(GuardLevel::Captain),
+            3 => Ok(GuardLevel::Captain),
             2 => Ok(GuardLevel::Commander),
-            3 => Ok(GuardLevel::Governor),
+            1 => Ok(GuardLevel::Governor),
             _ => Err(())
         }
     }
