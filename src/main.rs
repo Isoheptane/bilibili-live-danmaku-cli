@@ -8,7 +8,7 @@ use message::interact::InteractType;
 use message::{LiveMessage, RawMessageDeserializeError};
 use session_data::init_room_data;
 use simple_logger::SimpleLogger;
-use websocket::Message;
+use tungstenite::Message;
 use std::thread::sleep;
 use std::{env, time::Duration};
 
@@ -111,14 +111,16 @@ fn start_listening(
         let messages = match client.recv_messages() {
             Ok(x) => x,
             Err(e) => match e {
-                client::Error::ConnectionClosed => {
+                client::ClientError::ConnectionClosed => {
                     return Ok(());
                 }
                 _ => {
+                    log::debug!("Failed to poll messages");
                     return Err(e.into())
                 }
             }
         };
+        log::debug!("Ready to process depacked messages...");
         for message in messages {
             process_depacked_message(message, config, &mut context);
         }

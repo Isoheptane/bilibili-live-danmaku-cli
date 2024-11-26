@@ -1,13 +1,10 @@
 use std::error;
-use std::io::ErrorKind;
 use std::net::TcpStream;
 
 use derive_more::Display;
 
-use native_tls::TlsStream;
-use websocket::sync::Client;
-use websocket::ws::dataframe::DataFrame;
-use websocket::{Message, WebSocketError};
+use tungstenite::stream::MaybeTlsStream;
+use tungstenite::{Message, WebSocket};
 
 use crate::depack::{depack_packets, DepackedMessage};
 use crate::session_data::SessionData;
@@ -15,26 +12,22 @@ use crate::Packet;
 
 #[allow(unused)]
 pub struct LiveClient {
-    client: Client<TlsStream<TcpStream>>,
+    client: WebSocket<MaybeTlsStream<TcpStream>>,
     connected: bool,
     session: SessionData
 }
 
 #[derive(Debug, Display)]
-pub enum Error {
-    URIParseError(websocket::url::ParseError),
-    CreateClientError(std::io::Error),
-    WebSocketError(websocket::WebSocketError),
+pub enum ClientError {
+    TungsteniteError(tungstenite::Error),
     ConnectionClosed,
     PacketProcessError
 }
 
-impl error::Error for Error {
+impl error::Error for ClientError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match &self {
-            Self::URIParseError(e) => Some(e),
-            Self::CreateClientError(e) => Some(e),
-            Self::WebSocketError(e) => Some(e),
+            Self::TungsteniteError(e) => Some(e),
             Self::ConnectionClosed => None,
             Self::PacketProcessError => None
         }
@@ -42,47 +35,51 @@ impl error::Error for Error {
 }
 
 impl LiveClient {
-    pub fn new(host_url: &str, session: SessionData) -> Result<Self, Error> {
-        let mut client = websocket::ClientBuilder::new(host_url)
-            .map_err(|e| Error::URIParseError(e))?
-            .connect_secure(None)
-            .map_err(|e| Error::WebSocketError(e))?;
-        // Client should work in nonblocking mode
-        client.set_nonblocking(true).map_err(|e| Error::CreateClientError(e))?;
+    pub fn new(host_url: &str, session: SessionData) -> Result<Self, ClientError> {
+        let (mut client, _) = tungstenite::connect(host_url)
+            .map_err(|e| ClientError::TungsteniteError(e))?;
 
-        let certificate = Packet::new_certificate_packet(session.uid, session.room_id, &session.token).map_err(|_| Error::PacketProcessError)?;
-        client.send_message(
-            &Message::binary(certificate.to_binary().map_err(|_| Error::PacketProcessError)?)
-        ).map_err(|_| Error::PacketProcessError)?;
+        let certificate = Packet::new_certificate_packet(session.uid, session.room_id, &session.token)
+            .map_err(|_| ClientError::PacketProcessError)?
+            .to_binary()
+            .map_err(|_| ClientError::PacketProcessError)?;
+
+        client.send(Message::binary(certificate))
+        .map_err(|e|ClientError::TungsteniteError(e))?;
+        log::debug!("Certificate packet sent");
 
         Ok(LiveClient{ client, session, connected: true })
     }
 
-    pub fn send_message(&mut self, message: Message) -> Result<(), Error> {
+    pub fn send_message(&mut self, message: Message) -> Result<(), ClientError> {
         if !self.connected {
-            return Err(Error::ConnectionClosed)
+            return Err(ClientError::ConnectionClosed)
         }
-        self.client.send_message(&message).map_err(|e| Error::WebSocketError(e))
+        log::debug!("Message send invoked");
+        self.client.send(message).map_err(|e| ClientError::TungsteniteError(e))
     }
 
-    pub fn recv_messages(&mut self) -> Result<Vec<DepackedMessage>, Error> {
+    pub fn recv_messages(&mut self) -> Result<Vec<DepackedMessage>, ClientError> {
         let mut messages: Vec<DepackedMessage> = vec![];
         // Read all packets
-        let error = 'poll: loop {
-            let msg = match self.client.recv_message() {
+        loop {
+            if !self.client.can_read() {
+                return Ok(messages);
+            };
+            let msg = match self.client.read() {
                 Ok(x) => x,
-                Err(e) => break 'poll e
+                Err(e) => return Err(ClientError::TungsteniteError(e))
             };
             if msg.is_close() {
                 self.connected = false;
-                return Err(Error::ConnectionClosed)
+                return Ok(messages);
             }
-            let data = msg.take_payload();
+            let data = msg.into_data();
             let packet = match Packet::from_binary(data.as_slice()) {
                 Ok(x) => x,
                 Err(_) => { continue; }
             };
-            log::trace!(
+            log::debug!(
                 target: "client", 
                 "Received packet: {:?}",
                 packet.header
@@ -91,29 +88,10 @@ impl LiveClient {
                 Ok(message) => message, 
                 Err(e) => {
                     log::debug!(target: "client", "Failed to depack packets: {}", e);
-                    continue 'poll;
+                    continue;
                 }
             };
             messages.push(message);
-        };
-        // Fetch out websocket errors
-        match error {
-            WebSocketError::IoError(io_error) => {
-                // Return messages on blocking operations
-                if io_error.kind() == ErrorKind::WouldBlock {
-                    return Ok(messages)
-                } else {
-                    return Err(Error::WebSocketError(WebSocketError::IoError(io_error)))
-                }
-            },
-            WebSocketError::NoDataAvailable => {
-                // Server disconnect
-                self.connected = false;
-                return Err(Error::ConnectionClosed)
-            },
-            e => {
-                return Err(Error::WebSocketError(e))
-            }
         };
     }
 }
