@@ -41,7 +41,7 @@ impl LiveClient {
         
         let (mut client, _) = tungstenite::connect(host_url)
             .map_err(|e| ClientError::TungsteniteError(e))?;
-
+        // Make underlying stream non-blocking
         match client.get_mut() {
             MaybeTlsStream::Plain(stream) => {
                 stream.set_nonblocking(true)
@@ -80,6 +80,7 @@ impl LiveClient {
             let msg = match self.client.read() {
                 Ok(x) => x,
                 Err(tungstenite::Error::Io(e)) => {
+                    // If would block, return success
                     if e.kind() == std::io::ErrorKind::WouldBlock {
                         return Ok(messages);
                     }
