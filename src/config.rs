@@ -5,7 +5,7 @@ use rusqlite::{Connection, OpenFlags};
 use serde::Deserialize;
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct ConfigFile {
+pub struct RawConfig {
     #[serde(rename = "roomId")]
     pub room_id: u64,
     #[serde(rename = "uid")]
@@ -21,7 +21,7 @@ pub struct ConfigFile {
     pub firefox_cookies_database_path: Option<String>,
 }
 
-impl ConfigFile {
+impl RawConfig {
     pub fn from_file(path: &str) -> Self {
         let file = File::open(path).expect("Failed to open config file");
         let reader = BufReader::new(file);
@@ -32,7 +32,7 @@ impl ConfigFile {
         // config file
         let path = read_after(&args, vec!["--config"]);
         if let Some(path) = path {
-            return ConfigFile::from_file(path);
+            return RawConfig::from_file(path);
         }
         // room_id
         let room_id: u64 = read_after(&args, vec!["--room-id"])
@@ -64,7 +64,7 @@ impl ConfigFile {
         let poll_interval_ms: u64 = read_after(&args, vec!["--poll-interval"])
             .map(|interval| interval.parse().expect("Invalid interval time")).unwrap_or(200);
         // Construct
-        ConfigFile {
+        RawConfig {
             room_id,
             uid,
             sessdata,
@@ -76,9 +76,8 @@ impl ConfigFile {
     }
 }
 
-impl Into<Config> for ConfigFile {
+impl Into<Config> for RawConfig {
     fn into(self) -> Config {
-
         let mut sessdata = self.sessdata;
         if sessdata.is_none() { if let Some(path) = self.firefox_cookies_database_path {
             //  THIS IS A WORKAROUND
@@ -98,6 +97,8 @@ impl Into<Config> for ConfigFile {
             ).expect("Failed to read SESSDATA from database");
             sessdata = Some(result);
             conn.close().expect("Failed to close database file");
+
+            log::debug!("Using SESSDATA from firefox database.")
         }}
 
         Config {
@@ -123,7 +124,7 @@ pub struct Config {
 
 impl Config {
     pub fn from_args(path: Vec<String>) -> Self {
-        ConfigFile::from_args(path).into()
+        RawConfig::from_args(path).into()
     }
 }
 
