@@ -6,13 +6,12 @@ pub struct LiveStartInfo {
     pub room_id: u64
 }
 
-impl TryFrom<RawLiveMessage> for LiveStartInfo {
-    type Error = ();
+impl LiveStartInfo {
     
-    fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
-        Ok(
+    pub fn try_from(value: RawLiveMessage) -> Option<Self> {
+        Some(
             LiveStartInfo {
-                room_id: value.room_id.ok_or(())?.as_u64().ok_or(())?
+                room_id: value.room_id?.as_u64()?
             }
         )
     }
@@ -27,13 +26,11 @@ pub struct LiveStopInfo {
     pub room_id: String
 }
 
-impl TryFrom<RawLiveMessage> for LiveStopInfo {
-    type Error = ();
-    
-    fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
-        Ok(
+impl LiveStopInfo {
+    pub fn try_from(value: RawLiveMessage) -> Option<Self> {
+        Some(
             LiveStopInfo {
-                room_id: value.room_id.ok_or(())?.as_str().ok_or(())?.to_string()
+                room_id: value.room_id?.as_str()?.to_string()
             }
         )
     }
@@ -45,13 +42,11 @@ pub struct LiveCutOffInfo {
     pub message: String
 }
 
-impl TryFrom<RawLiveMessage> for LiveCutOffInfo {
-    type Error = ();
-    
-    fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
-        Ok(
+impl LiveCutOffInfo {
+    pub fn try_from(value: RawLiveMessage) -> Option<Self> {
+        Some(
             LiveCutOffInfo {
-                message: value.msg.ok_or(())?.to_string()
+                message: value.msg?.to_string()
             }
         )
     }

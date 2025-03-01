@@ -9,15 +9,13 @@ pub struct WelcomeInfo {
     pub is_admin: bool,
 }
 
-impl TryFrom<RawLiveMessage> for WelcomeInfo {
-    type Error = ();
-    
-    fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
-        let data = value.data.ok_or(())?;
-        let user_id = data.get("uid").ok_or(())?.as_u64().ok_or(())?;
-        let username = data.get("uname").ok_or(())?.as_str().ok_or(())?;
-        let is_admin = data.get("isadmin").ok_or(())?.as_u64().is_some_and(|value| value == 1);
-        Ok(
+impl WelcomeInfo {
+    pub fn try_from(value: RawLiveMessage) -> Option<Self> {
+        let data = value.data?;
+        let user_id = data.get("uid")?.as_u64()?;
+        let username = data.get("uname")?.as_str()?;
+        let is_admin = data.get("isadmin")?.as_u64().is_some_and(|value| value == 1);
+        Some(
             WelcomeInfo {
                 user_id,
                 username: username.to_string(),
@@ -35,15 +33,13 @@ pub struct WelcomeGuardInfo {
     pub guard_level: Option<GuardLevel>,
 }
 
-impl TryFrom<RawLiveMessage> for WelcomeGuardInfo {
-    type Error = ();
-    
-    fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
-        let data = value.data.ok_or(())?;
-        let user_id = data.get("uid").ok_or(())?.as_u64().ok_or(())?;
-        let username = data.get("uname").ok_or(())?.as_str().ok_or(())?;
-        let guard_level: Option<GuardLevel> = data.get("guard_level").ok_or(())?.as_u64().ok_or(())?.try_into().ok();
-        Ok(
+impl WelcomeGuardInfo {
+    pub fn try_from(value: RawLiveMessage) -> Option<Self> {
+        let data = value.data?;
+        let user_id = data.get("uid")?.as_u64()?;
+        let username = data.get("uname")?.as_str()?;
+        let guard_level: Option<GuardLevel> = data.get("guard_level")?.as_u64()?.try_into().ok();
+        Some(
             WelcomeGuardInfo {
                 user_id,
                 username: username.to_string(),

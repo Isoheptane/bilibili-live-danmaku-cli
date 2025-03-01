@@ -9,16 +9,14 @@ pub struct GuardBuyInfo {
     pub count: u64,
 }
 
-impl TryFrom<RawLiveMessage> for GuardBuyInfo {
-    type Error = ();
+impl GuardBuyInfo {
+    pub fn try_from(value: RawLiveMessage) -> Option<Self> {
+        let data = value.data?;
 
-    fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
-        let data = value.data.ok_or(())?;
-
-        let user_id = data.get("uid").ok_or(())?.as_u64().ok_or(())?;
-        let username = data.get("username").ok_or(())?.as_str().ok_or(())?;
-        let guard_level: GuardLevel = data.get("guard_level").ok_or(())?.as_u64().ok_or(())?.try_into()?;
-        let count = data.get("num").ok_or(())?.as_u64().ok_or(())?;
+        let user_id = data.get("uid")?.as_u64()?;
+        let username = data.get("username")?.as_str()?;
+        let guard_level: GuardLevel = data.get("guard_level")?.as_u64()?.try_into().ok()?;
+        let count = data.get("num")?.as_u64()?;
         let user = UserInfo {
             uid: user_id,
             username: username.to_string(),
@@ -26,7 +24,7 @@ impl TryFrom<RawLiveMessage> for GuardBuyInfo {
             medal: None
         };
 
-        Ok(
+        Some(
             GuardBuyInfo {
                 user,
                 guard_level,

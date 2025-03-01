@@ -6,13 +6,11 @@ pub struct WarningInfo {
     pub message: String
 }
 
-impl TryFrom<RawLiveMessage> for WarningInfo {
-    type Error = ();
-    
-    fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
-        Ok(
+impl WarningInfo {
+    pub fn try_from(value: RawLiveMessage) -> Option<Self> {
+        Some(
             WarningInfo {
-                message: value.msg.ok_or(())?.to_string()
+                message: value.msg?.to_string()
             }
         )
     }

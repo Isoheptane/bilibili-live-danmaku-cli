@@ -19,24 +19,22 @@ pub struct InteractInfo {
     pub interact_type: InteractType
 }
 
-impl TryFrom<RawLiveMessage> for InteractInfo {
-    type Error = ();
-    
-    fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
-        let data = value.data.ok_or(())?;
+impl InteractInfo {
+    pub fn try_from(value: RawLiveMessage) -> Option<Self> {
+        let data = value.data?;
 
-        let uinfo = data.get("uinfo").ok_or(())?;
+        let uinfo = data.get("uinfo")?;
         let user = UserInfo::try_from(uinfo)?;
 
-        let interact_type = match data.get("msg_type").ok_or(())?.as_u64().ok_or(())? {
+        let interact_type = match data.get("msg_type")?.as_u64()? {
             1 => InteractType::Enter,
             2 => InteractType::Follow,
             3 => InteractType::Share,
             4 => InteractType::SpecialFollow,
             5 => InteractType::MutualFollow,
-            _ => { return Err(()) }
+            _ => { return None }
         };
-        Ok(
+        Some(
             InteractInfo {
                 user,
                 interact_type

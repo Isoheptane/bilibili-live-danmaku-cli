@@ -9,18 +9,16 @@ pub struct SendGiftInfo {
     pub count: u64
 }
 
-impl TryFrom<RawLiveMessage> for SendGiftInfo {
-    type Error = ();
-    
-    fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
-        let data = value.data.ok_or(())?;
+impl SendGiftInfo {
+    pub fn try_from(value: RawLiveMessage) -> Option<Self> {
+        let data = value.data?;
 
-        let uinfo = data.get("sender_uinfo").ok_or(())?;
+        let uinfo = data.get("sender_uinfo")?;
         let user = UserInfo::try_from(uinfo)?;
 
-        let gift_name = data.get("giftName").ok_or(())?.as_str().ok_or(())?;
-        let count = data.get("num").ok_or(())?.as_u64().ok_or(())?;
-        Ok(
+        let gift_name = data.get("giftName")?.as_str()?;
+        let count = data.get("num")?.as_u64()?;
+        Some(
             SendGiftInfo {
                 user,
                 gift_name: gift_name.to_string(),
@@ -44,22 +42,20 @@ pub struct GiftTopInfo {
     pub ranks: Vec<GiftRankInfo>
 }
 
-impl TryFrom<RawLiveMessage> for GiftTopInfo {
-    type Error = ();
-    
-    fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
-        let data = value.data.ok_or(())?;
-        let data = data.as_array().ok_or(())?;
+impl GiftTopInfo {
+    pub fn try_from(value: RawLiveMessage) -> Option<Self> {
+        let data = value.data?;
+        let data = data.as_array()?;
         let mut ranks: Vec<GiftRankInfo> = vec![];
         for value in data {
             let rank = GiftRankInfo {
-                user_id: value.get("uid").ok_or(())?.as_u64().ok_or(())?,
-                username: value.get("uname").ok_or(())?.as_str().ok_or(())?.to_string(),
-                coin: value.get("coin").ok_or(())?.as_u64().ok_or(())?
+                user_id: value.get("uid")?.as_u64()?,
+                username: value.get("uname")?.as_str()?.to_string(),
+                coin: value.get("coin")?.as_u64()?
             };
             ranks.push(rank);
         }
-        Ok(
+        Some(
             GiftTopInfo {
                 ranks
             }

@@ -12,20 +12,18 @@ pub struct DanmakuInfo {
     pub text: String,
 }
 
-impl TryFrom<RawLiveMessage> for DanmakuInfo {
-    type Error = ();
-
-    fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
-        let info = value.info.ok_or(())?;
+impl DanmakuInfo {
+    pub fn try_from(value: RawLiveMessage) -> Option<Self> {
+        let info = value.info?;
         
-        let uinfo = info.get(0).ok_or(())?.get(15).ok_or(())?.get("user").ok_or(())?;
+        let uinfo = info.get(0)?.get(15)?.get("user")?;
         let user = UserInfo::try_from(uinfo)?;
 
-        let text = info.get(1).ok_or(())?.as_str().ok_or(())?;
+        let text = info.get(1)?.as_str()?;
 
-        let user_info: &Vec<Value> = info.get(2).ok_or(())?.as_array().ok_or(())?;
-        let is_admin = user_info.get(2).ok_or(())?.as_u64().is_some_and(|value| value == 1);
-        let is_vip = user_info.get(3).ok_or(())?.as_u64().is_some_and(|value| value == 1);
+        let user_info: &Vec<Value> = info.get(2)?.as_array()?;
+        let is_admin = user_info.get(2)?.as_u64().is_some_and(|value| value == 1);
+        let is_vip = user_info.get(3)?.as_u64().is_some_and(|value| value == 1);
 
         let danmaku_info = DanmakuInfo {
             user,
@@ -35,6 +33,6 @@ impl TryFrom<RawLiveMessage> for DanmakuInfo {
         };
 
         log::debug!("Danmaku Received: {:#?}", danmaku_info);
-        Ok(danmaku_info)
+        Some(danmaku_info)
     }
 }

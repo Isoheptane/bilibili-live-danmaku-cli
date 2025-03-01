@@ -86,22 +86,34 @@ impl TryFrom<RawLiveMessage> for LiveMessage {
     type Error = RawMessageDeserializeError;
 
     fn try_from(value: RawLiveMessage) -> Result<Self, Self::Error> {
+        let value_backup = value.clone();
         match value.cmd.as_str() {
-            "LIVE"          => LiveStartInfo::      try_from(value.clone()).map(|value| Self::LiveStart(value)),
-            "PREPARING"     => LiveStopInfo::       try_from(value.clone()).map(|value| Self::LiveStop(value)),
-            "WARNING"       => WarningInfo::        try_from(value.clone()).map(|value| Self::Warning(value)),
-            "CUT_OFF"       => LiveCutOffInfo::     try_from(value.clone()).map(|value| Self::LiveCutOff(value)),
-            "WELCOME"       => WelcomeInfo::        try_from(value.clone()).map(|value| Self::Welcome(value)),
-            "WELCOME_GUARD" => WelcomeGuardInfo::   try_from(value.clone()).map(|value| Self::WelcomeGuard(value)),
-            "DANMU_MSG"     => DanmakuInfo::        try_from(value.clone()).map(|value| Self::Danmaku(value)),
-            "SEND_GIFT"     => SendGiftInfo::       try_from(value.clone()).map(|value| Self::SendGift(value)),
+            "LIVE"          
+                => LiveStartInfo::      try_from(value).map(|value| Self::LiveStart(value)),
+            "PREPARING"     
+                => LiveStopInfo::       try_from(value).map(|value| Self::LiveStop(value)),
+            "WARNING"       
+                => WarningInfo::        try_from(value).map(|value| Self::Warning(value)),
+            "CUT_OFF"       
+                => LiveCutOffInfo::     try_from(value).map(|value| Self::LiveCutOff(value)),
+            "WELCOME"       
+                => WelcomeInfo::        try_from(value).map(|value| Self::Welcome(value)),
+            "WELCOME_GUARD" 
+                => WelcomeGuardInfo::   try_from(value).map(|value| Self::WelcomeGuard(value)),
+            "DANMU_MSG"     
+                => DanmakuInfo::        try_from(value).map(|value| Self::Danmaku(value)),
+            "SEND_GIFT"     
+                => SendGiftInfo::       try_from(value).map(|value| Self::SendGift(value)),
             "SUPER_CHAT_MESSAGE" | "SUPER_CHAT_MESSAGE_JP"
-                            => SuperChatInfo::      try_from(value.clone()).map(|value| Self::SuperChat(value)),
-            "INTERACT_WORD" => InteractInfo::       try_from(value.clone()).map(|value| Self::Interact(value)),
-            "GUARD_BUY"     => GuardBuyInfo::       try_from(value.clone()).map(|value| Self::GuardBuy(value)),
-            "GIFT_TOP"      => GiftTopInfo::        try_from(value.clone()).map(|value| Self::GiftTop(value)),
+                => SuperChatInfo::      try_from(value).map(|value| Self::SuperChat(value)),
+            "INTERACT_WORD" 
+                => InteractInfo::       try_from(value).map(|value| Self::Interact(value)),
+            "GUARD_BUY"     
+                => GuardBuyInfo::       try_from(value).map(|value| Self::GuardBuy(value)),
+            "GIFT_TOP"      
+                => GiftTopInfo::        try_from(value).map(|value| Self::GiftTop(value)),
             _ => { return Err(RawMessageDeserializeError::NotSupported(value.cmd)) },
         }
-        .map_err(|_| RawMessageDeserializeError::DeserializeError(value))
+        .ok_or(RawMessageDeserializeError::DeserializeError(value_backup))
     }
 }
