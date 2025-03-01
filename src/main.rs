@@ -120,7 +120,7 @@ fn start_listening(
                 }
             }
         };
-        log::debug!("Ready to process depacked messages...");
+        log::trace!("Ready to process depacked messages...");
         for message in messages {
             process_depacked_message(message, config, &mut context);
         }
