@@ -237,7 +237,7 @@ fn process_live_message(
             match info.interact_type {
                 InteractType::Enter => println!(" * {} 進入了直播間", colored_name),
                 InteractType::Follow => println!(" * {} 關注了你", colored_name),
-                InteractType::Share => println!(" * {} 分.享了直播間", colored_name),
+                InteractType::Share => println!(" * {} 分享了直播間", colored_name),
                 InteractType::SpecialFollow => println!(" * {} 特別關注了你", colored_name),
                 InteractType::MutualFollow => println!(" * {} 互關了你", colored_name),
             }
