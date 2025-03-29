@@ -80,14 +80,12 @@ impl Into<Config> for RawConfig {
     fn into(self) -> Config {
         let mut sessdata = self.sessdata;
         if sessdata.is_none() { if let Some(path) = self.firefox_cookies_database_path {
-            //  THIS IS A WORKAROUND
-            //  Firefox cookies database is locked by Firefox process.
-            //  This code will copy the database file to cwd, then read copied database file.
-            const CWD_DATABASE_PATH: &str = "cookies-temp.sqlite";
-            std::fs::copy(path, CWD_DATABASE_PATH).expect("Failed to copy database file");
+
+            //  Firefox cookies database is locked by Firefox process, read with immutable option
+            let uri = format!("file://{}?immutable=1", path);
 
             let conn = Connection::open_with_flags(
-                CWD_DATABASE_PATH,
+                uri,
                 OpenFlags::SQLITE_OPEN_READ_ONLY
             ).expect("Failed to open database file");
 
