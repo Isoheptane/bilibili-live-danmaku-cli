@@ -35,7 +35,7 @@ fn resolve_command_packet(header: PacketHeader, body: &[u8]) -> Result<RawLiveMe
     // log::debug!("Resolving command packet: {:#?}\n{:?}", header, body);
     let json = String::from_utf8(body.to_vec())
         .map_err(|_| PacketDepackError::BodyDeserializeError)?;
-    log::trace!(target: "client", "Processing JSON string: {:#?}", json);
+    log::debug!(target: "client", "Processing JSON string:\n{}", json);
     let raw_live_message: RawLiveMessage = serde_json::from_str(&json)
         .map_err(|_| PacketDepackError::BodyDeserializeError)?;
     Ok(raw_live_message)

@@ -16,11 +16,7 @@ impl UserInfo {
     pub fn try_from(value: &Value) -> Option<Self> {
         let uid = value.get("uid")?.as_u64()?;
         let user_name = value.get("base")?.get("name")?.as_str()?;
-        let guard_info = value.get("guard")?.as_object();
-        let guard_level: Option<GuardLevel> = match guard_info {
-            None => None,
-            Some(guard_info) => guard_info.get("level")?.as_u64()?.try_into().ok()
-        };
+        
         let medal_info = value.get("medal")?.as_object();
         let medal = match medal_info {
             None => None,
@@ -36,6 +32,14 @@ impl UserInfo {
                 })
             }
         };
+
+        let guard_level: Option<GuardLevel> = match medal_info {
+            None => None,
+            Some(medal_info) => {
+                medal_info.get("guard_level")?.as_u64()?.try_into().ok()
+            }
+        };
+
         Some(
             UserInfo {
                 uid,
