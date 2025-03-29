@@ -101,7 +101,7 @@ fn start_listening(
         for info in context.gift_list.get_expired() {
             println!(
                 " * {} 投餵了 {} 個 {}",
-                info.user.username.bright_green(),
+                get_colored_name(&info.user.username, info.user.guard_level),
                 info.gift_count.to_string().bright_yellow(),
                 info.gift_name.bright_magenta(),
             );
@@ -166,6 +166,7 @@ fn process_live_message(
     config: &Config, 
     context: &mut LiveContext
 ) {
+    log::debug!("Processing Live Message:\n{:#?}", message);
     match message {
         LiveMessage::LiveStart(_) => {
             println!(" * {}", "直播開始了".bright_green());

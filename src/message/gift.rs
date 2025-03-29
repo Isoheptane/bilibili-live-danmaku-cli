@@ -1,5 +1,5 @@
 use super::RawLiveMessage;
-use super::data::UserInfo;
+use super::data::{GuardLevel, UserInfo};
 
 #[allow(unused)]
 #[derive(Debug, Clone)]
@@ -15,6 +15,9 @@ impl SendGiftInfo {
 
         let uinfo = data.get("sender_uinfo")?;
         let user = UserInfo::try_from(uinfo)?;
+
+        let guard_level: Option<GuardLevel> = data.get("guard_level")?.as_u64()?.try_into().ok();
+        let user = user.set_guard(guard_level);
 
         let gift_name = data.get("giftName")?.as_str()?;
         let count = data.get("num")?.as_u64()?;

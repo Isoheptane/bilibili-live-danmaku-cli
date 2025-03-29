@@ -1,7 +1,7 @@
 use serde_json::Value;
 
 use super::RawLiveMessage;
-use super::data::UserInfo;
+use super::data::{GuardLevel, UserInfo};
 
 #[allow(unused)]
 #[derive(Debug, Clone)]
@@ -25,14 +25,15 @@ impl DanmakuInfo {
         let is_admin = user_info.get(2)?.as_u64().is_some_and(|value| value == 1);
         let is_vip = user_info.get(3)?.as_u64().is_some_and(|value| value == 1);
 
+        let guard_level: Option<GuardLevel> = info.get(7)?.as_u64()?.try_into().ok();
+        let user = user.set_guard(guard_level);
+
         let danmaku_info = DanmakuInfo {
             user,
             text: text.to_string(),
             is_admin,
             is_vip,
         };
-
-        log::debug!("Danmaku Received: {:#?}", danmaku_info);
         Some(danmaku_info)
     }
 }
