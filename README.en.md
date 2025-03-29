@@ -71,5 +71,3 @@ Since this tool do not utilize multithreading or async frameworks, the poll inte
 
 ### `firefoxCookiesDatabase` | `--database <DATABASE_PATH>`
 Specifies the Firefox cookies database path. If `sessdata` is specified, this option will be ignored, the tool won't read sessdata from cookies database.
-
-**WARNING**: If database path is specified, this tool will copy the database file to its working directory because the original database file will be locked and unable to read if Firefox is running.

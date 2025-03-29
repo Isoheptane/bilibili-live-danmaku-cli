@@ -71,5 +71,3 @@
 
 ### `firefoxCookiesDatabase` | `--database <DATABASE_PATH>`
 指定 Firefox 的 Cookies 資料庫檔案路徑。如果指定了 `sessdata`，該選項會將會被忽略，該工具將不會從 Cookies 資料庫中讀取 SESSDATA。
-
-**警告**：如果指定了資料庫檔案路徑，該工具會將資料庫檔案拷貝到工作目錄中。這是因為如果 Firefox 正在運行，原始的資料庫檔案會被鎖定且無法讀取。
