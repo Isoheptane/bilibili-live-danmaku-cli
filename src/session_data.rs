@@ -27,9 +27,10 @@ fn gen_mixin_key(raw_wbi_key: impl AsRef<[u8]>) -> String {
             .iter()
             .map(|n| raw_wbi_key[*n as usize])
             .collect::<Vec<u8>>();
-        unsafe { String::from_utf8_unchecked(binding) }
+        // Should always success since raw_wbi_key should only consist of ASCII characters
+        String::from_utf8(binding).unwrap()
     };
-    let _ = mixin_key.split_off(32); // 截取前 32 位字符
+    mixin_key.truncate(32); // Only first 32 characters
     mixin_key
 }
 

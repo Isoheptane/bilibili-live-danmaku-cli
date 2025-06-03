@@ -1,3 +1,5 @@
 .vscode/
 /target
 sessdata
+config*.json
+!config_example.json
