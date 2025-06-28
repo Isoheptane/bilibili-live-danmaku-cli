@@ -1,6 +1,7 @@
 use derive_more::Display;
 use md5;
 use percent_encoding::{utf8_percent_encode, NON_ALPHANUMERIC};
+use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::error;
 use std::fs::{self, File};
@@ -62,6 +63,38 @@ impl From<io::Error> for InitRoomError {
     fn from(err: io::Error) -> Self {
         InitRoomError::IoError(err)
     }
+}
+
+#[derive(Debug, Deserialize, Serialize)]
+struct BuvidResponse {
+    b_3: String,
+    b_4: String,
+}
+
+fn get_buvid_cookies(agent: &ureq::Agent) -> Result<(String, String), InitRoomError> {
+    log::debug!(
+        target: "main",
+        "Requesting buvid3 and buvid4 from finger API..."
+    );
+
+    let buvid_data: BuvidResponse = agent
+        .get("https://api.bilibili.com/x/frontend/finger/spi")
+        .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3")
+        .set("Referer", "https://www.bilibili.com/")
+        .call()
+        .map_err(|e| InitRoomError::RequestFailed(e))?
+        .into_json::<HttpAPIResponse<BuvidResponse>>()
+        .map_err(|e| InitRoomError::BadResponse(e))?
+        .response_data();
+
+    log::debug!(
+        target: "main",
+        "Retrieved buvid3: {}, buvid4: {}",
+        buvid_data.b_3.bright_green(),
+        buvid_data.b_4.bright_green()
+    );
+
+    Ok((buvid_data.b_3, buvid_data.b_4))
 }
 
 fn get_wbi_keys(agent: &ureq::Agent) -> Result<(String, String), InitRoomError> {
@@ -251,6 +284,9 @@ pub fn init_room_data(
     // Get WBI keys (from cache or API)
     let (img_key, sub_key) = get_wbi_keys(&agent)?;
 
+    // Get buvid3 and buvid4 cookies
+    let (buvid3, buvid4) = get_buvid_cookies(&agent)?;
+
     // Get raw_wbi_key
     let raw_wbi_key = format!("{}{}", img_key, sub_key);
 
@@ -275,16 +311,24 @@ pub fn init_room_data(
     // Build final query string
     let query_string = format!("id={}&wts={}&w_rid={}", room_id, params["wts"], w_rid);
 
+    // Build cookie string with SESSDATA, buvid3, and buvid4
+    let mut cookie_parts = Vec::new();
+    if let Some(sessdata) = sessdata {
+        if !sessdata.is_empty() {
+            cookie_parts.push(format!("SESSDATA={}", sessdata));
+        }
+    }
+    cookie_parts.push(format!("buvid3={}", buvid3));
+    cookie_parts.push(format!("buvid4={}", buvid4));
+    let cookie_string = cookie_parts.join("; ");
+
     // Get danmaku info data
     let danmaku_info_data: DanmakuInfoData = agent
         .get(&format!(
             "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?{}",
             query_string
         ))
-        .set(
-            "Cookie",
-            format!("SESSDATA={}", sessdata.unwrap_or_default()).as_str(),
-        )
+        .set("Cookie", &cookie_string)
         .call()
         .map_err(|e| InitRoomError::RequestFailed(e))?
         .into_json::<HttpAPIResponse<DanmakuInfoData>>()
