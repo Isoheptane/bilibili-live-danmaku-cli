@@ -3,7 +3,6 @@ use derive_more::Display;
 use bincode::Options;
 use serde::{Deserialize, Serialize};
 
-#[allow(dead_code)]
 #[repr(u16)]
 pub enum Protocol {
     Command         = 0,
@@ -12,7 +11,19 @@ pub enum Protocol {
     CommandBrotli   = 3
 }
 
-#[allow(dead_code)]
+impl TryFrom<u16> for Protocol {
+    type Error = ();
+    fn try_from(value: u16) -> Result<Self, Self::Error> {
+        match value {
+            0 => Ok(Protocol::Command),
+            1 => Ok(Protocol::Special),
+            2 => Ok(Protocol::CommandZlib),
+            3 => Ok(Protocol::CommandBrotli),
+            _ => Err(())
+        }
+    }
+}
+
 #[repr(u32)]
 pub enum PacketType {
     Heartbeat       = 2,
@@ -22,7 +33,21 @@ pub enum PacketType {
     CertificateResp = 8,
 }
 
-#[allow(dead_code)]
+impl TryFrom<u32> for PacketType {
+    type Error = ();
+    fn try_from(value: u32) -> Result<Self, Self::Error> {
+        match value {
+            2 => Ok(PacketType::Heartbeat),
+            3 => Ok(PacketType::HeartbeatResp),
+            5 => Ok(PacketType::Command),
+            7 => Ok(PacketType::Certificate),
+            8 => Ok(PacketType::CertificateResp),
+            _ => Err(())
+        }
+    }
+}
+
+#[allow(unused)]
 #[repr(u8)]
 pub enum Protover {
     Normal = 1,
@@ -39,6 +64,7 @@ pub struct PacketHeader {
     pub sequence: u32,
 }
 
+// Note: Certificate packet body is in JSON format
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CertificatePacketBody {
     pub uid: u64,
@@ -47,6 +73,8 @@ pub struct CertificatePacketBody {
     pub protover: u8,
 }
 
+// It's fine to ignore the certificate response body so it is marked allow(unused)
+#[allow(unused)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CertificateRespBody {
     pub code: i32
@@ -99,6 +127,7 @@ impl Packet {
             uid,
             roomid: room_id,
             key: token.to_string(),
+            // Protover is set to Brotli, not tested on Zlib or Normal
             protover: Protover::Brotli as u8
         };
         let cert_body = serde_json::ser::to_string(&cert_body).map_err(|_| PacketConvertError::BodySerializeError)?;
