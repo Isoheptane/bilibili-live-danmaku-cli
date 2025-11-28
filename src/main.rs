@@ -275,7 +275,7 @@ fn get_colored_name(name: &str, guard_level: Option<GuardLevel>) -> ColoredStrin
 
 // Get colored badge message
 fn get_colored_badge_name(name: &str, badge_level: u64) -> ColoredString {
-    match badge_level {
+    match (badge_level - 1) % 40 + 1 {
         (1..=4)     => name.green(),
         (5..=8)     => name.blue(),
         (9..=12)    => name.magenta(),
