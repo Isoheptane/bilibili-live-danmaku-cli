@@ -37,7 +37,7 @@ impl error::Error for ClientError {
 }
 
 impl LiveClient {
-    pub fn new(host_url: &str, session: SessionData) -> Result<Self, ClientError> {
+    pub fn connect(host_url: &str, session: SessionData) -> Result<Self, ClientError> {
         
         let (mut client, _) = tungstenite::connect(host_url)
             .map_err(|e| ClientError::TungsteniteError(e))?;
@@ -60,7 +60,7 @@ impl LiveClient {
 
         client.send(Message::binary(certificate))
         .map_err(|e|ClientError::TungsteniteError(e))?;
-        log::debug!("Certificate packet sent");
+        log::debug!(target: "client", "Certificate packet sent");
 
         Ok(LiveClient{ client, session, connected: true })
     }
@@ -69,7 +69,7 @@ impl LiveClient {
         if !self.connected {
             return Err(ClientError::ConnectionClosed)
         }
-        log::debug!("Message send invoked");
+        log::debug!(target: "client", "Message send invoked");
         self.client.send(message).map_err(|e| ClientError::TungsteniteError(e))
     }
 
@@ -94,20 +94,21 @@ impl LiveClient {
                 self.connected = false;
                 return Ok(messages);
             }
+
             let data = msg.into_data();
             let packet = match Packet::from_binary(data.as_slice()) {
                 Ok(x) => x,
-                Err(_) => { continue; }
+                Err(e) => {
+                    log::debug!(target: "client", "Failed to parse binary packet: {}\nData: {}", e, hex::encode(data));
+                    continue; 
+                }
             };
-            log::debug!(
-                target: "client", 
-                "Received packet: {:?}",
-                packet.header
-            );
+            log::debug!(target: "client", "Received packet: {:?}", packet.header);
+
             let message = match depack_packets(packet.header, &packet.body) {
                 Ok(message) => message, 
                 Err(e) => {
-                    log::debug!(target: "client", "Failed to depack packets: {}", e);
+                    log::debug!(target: "client", "Failed to depack packets: {}\nBody: {}", e, hex::encode(packet.body));
                     continue;
                 }
             };
