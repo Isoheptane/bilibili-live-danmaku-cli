@@ -12,11 +12,15 @@ pub struct RawConfig {
     pub uid: Option<u64>,
     pub sessdata: Option<String>,
     #[serde(rename = "giftCombo")]
-    pub enable_gift_combo: bool,
+    pub gift_combo: Option<bool>,
     #[serde(rename = "comboInterval")]
-    pub gift_combo_interval_ms: u64,
+    pub gift_combo_interval_ms: Option<u64>,
+    #[serde(rename = "persistentSuperchat")]
+    pub persistent_superchat: Option<bool>,
+    #[serde(rename = "persistentSuperchatInterval")]
+    pub persistent_superchat_interval_sec: Option<u64>,
     #[serde(rename = "pollInterval")]
-    pub poll_interval_ms: u64,
+    pub poll_interval_ms: Option<u64>,
     #[serde(rename = "firefoxCookiesDatabase")]
     pub firefox_cookies_database_path: Option<String>,
 }
@@ -57,19 +61,26 @@ impl RawConfig {
         let database_path: Option<String> = read_after(&args, vec!["--firefox-database", "--database"])
             .and_then(|path| Some(path.clone()));
         // gift combo feature
-        let enable_gift_combo: bool = args.contains(&"--gift-combo".to_string());
-        let gift_combo_interval_ms: u64 = read_after(&args, vec!["--combo-interval"])
-            .map(|interval| interval.parse().expect("Invalid interval time")).unwrap_or(2000);
+        let gift_combo: bool = args.contains(&"--gift-combo".to_string());
+        let gift_combo_interval_ms: Option<u64> = read_after(&args, vec!["--combo-interval"])
+            .map(|interval| interval.parse().expect("Invalid interval time"));
+        // persistent superchat feature
+        let persistent_superchat: bool = args.contains(&"--persistent-sc".to_string());
+        let persistent_superchat_interval_sec: Option<u64> = read_after(&args, vec!["--persistent-sc-interval"])
+            .map(|interval| interval.parse().expect("Invalid interval time"));
+        
         // poll interval
-        let poll_interval_ms: u64 = read_after(&args, vec!["--poll-interval"])
-            .map(|interval| interval.parse().expect("Invalid interval time")).unwrap_or(200);
+        let poll_interval_ms: Option<u64> = read_after(&args, vec!["--poll-interval"])
+            .map(|interval| interval.parse().expect("Invalid interval time"));
         // Construct
         RawConfig {
             room_id,
             uid,
             sessdata,
-            enable_gift_combo,
+            gift_combo: Some(gift_combo),
             gift_combo_interval_ms,
+            persistent_superchat: Some(persistent_superchat),
+            persistent_superchat_interval_sec,
             poll_interval_ms,
             firefox_cookies_database_path: database_path
         }
@@ -100,12 +111,14 @@ impl Into<Config> for RawConfig {
         }}
 
         Config {
-            room_id:                    self.room_id,
-            uid:                        self.uid,
-            sessdata:                   sessdata,
-            enable_gift_combo:          self.enable_gift_combo,
-            gift_combo_interval_ms:     self.gift_combo_interval_ms,
-            poll_interval_ms:           self.poll_interval_ms,
+            room_id:                                self.room_id,
+            uid:                                    self.uid,
+            sessdata:                               sessdata,
+            gift_combo:                             self.gift_combo.unwrap_or(false),
+            gift_combo_interval_ms:                 self.gift_combo_interval_ms.unwrap_or(2000),
+            persistent_superchat:                   self.persistent_superchat.unwrap_or(false),
+            persistent_superchat_interval_sec:      self.persistent_superchat_interval_sec.unwrap_or(30),
+            poll_interval_ms:                       self.poll_interval_ms.unwrap_or(200),
         }
     }
 }
@@ -115,8 +128,10 @@ pub struct Config {
     pub room_id: u64,
     pub uid: Option<u64>,
     pub sessdata: Option<String>,
-    pub enable_gift_combo: bool,
+    pub gift_combo: bool,
     pub gift_combo_interval_ms: u64,
+    pub persistent_superchat: bool,
+    pub persistent_superchat_interval_sec: u64,
     pub poll_interval_ms: u64,
 }
 

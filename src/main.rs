@@ -105,6 +105,25 @@ fn start_listening(
             );
             context.gift_list.remove(&info);
         }
+        for sc in context.superchat_list.get_should_show() {
+            let time_since_send = if sc.expired() {
+                sc.superchat_info.keep_time
+            } else {
+                (sc.next_show_time - sc.send_time).num_seconds() as u64
+            };
+            println!(
+                "[重放] {} <{}> ({})\n : {}",
+                "醒目留言".bright_cyan(),
+                get_colored_name(&sc.superchat_info.user.username, sc.superchat_info.user.guard_level),
+                format!(
+                    "${:.2} {}/{}s", 
+                    sc.superchat_info.price,
+                    time_since_send,
+                    sc.superchat_info.keep_time
+                ).bright_yellow(),
+                sc.superchat_info.message.bright_yellow(),
+            );
+        }
         // Process messages
         let messages = match client.recv_messages() {
             Ok(x) => x,
@@ -207,7 +226,7 @@ fn process_live_message(
             );
         }
         LiveMessage::SendGift(info) => {
-            if config.enable_gift_combo {
+            if config.gift_combo {
                 context.gift_list.append_gift(
                     info, 
                     TimeDelta::milliseconds(config.gift_combo_interval_ms as i64), 
@@ -230,6 +249,12 @@ fn process_live_message(
                 format!("${:.2} {}s", info.price, info.keep_time).bright_yellow(),
                 info.message.bright_yellow(),
             );
+            if config.persistent_superchat {
+                context.superchat_list.append_superchat(
+                    info, 
+                    TimeDelta::seconds(config.persistent_superchat_interval_sec as i64)
+                );
+            }
         }
         LiveMessage::Interact(info) => {
             let colored_name = get_colored_name(&info.user.username, info.user.guard_level);

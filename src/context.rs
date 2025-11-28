@@ -13,12 +13,18 @@ pub struct CombinedSendGiftInfo {
     pub expiry_time: DateTime<Utc>
 }
 
+impl CombinedSendGiftInfo {
+    pub fn expired(&self) -> bool {
+        return Utc::now() > self.expiry_time
+    }
+}
+
 pub struct SendGiftList {
     gifts: HashMap<(u64, String), CombinedSendGiftInfo>,
 }
 
-#[allow(unused)]
 impl SendGiftList {
+    #[allow(unused)]
     pub fn contains_info(&self, info: &SendGiftInfo) -> bool{
         self.gifts.contains_key(&(info.user.uid, info.gift_name.clone()))
     }
@@ -30,71 +36,85 @@ impl SendGiftList {
                 gift_name: info.gift_name.clone(),
                 gift_count: 0,
                 event_count: 0,
-                expiry_time: Utc::now().checked_add_signed(expire_interval).expect("Failed to update time")
+                expiry_time: Utc::now().checked_add_signed(expire_interval)
+                    .expect("Failed to update time: Time out of range")
             }
         );
         combined_info.gift_count += info.count;
         combined_info.event_count += 1;
         if refresh_time {
-            combined_info.expiry_time = Utc::now().checked_add_signed(expire_interval).expect("Failed to update time")
+            combined_info.expiry_time = Utc::now().checked_add_signed(expire_interval)
+                .expect("Failed to update time: Time out of range")
         }
     }
-    pub fn get_expired(&self) -> Vec<CombinedSendGiftInfo> {
-        self.gifts.iter().filter(|(_, combined_info)| {
-            Utc::now() > combined_info.expiry_time
-        })
-        .map(|(_, combined_info)| combined_info.clone())
-        .collect()
+    /// Return expired info, this will remove expired info from the pending list
+    pub fn get_expired(&mut self) -> Vec<CombinedSendGiftInfo> {
+        let expired_list: Vec<CombinedSendGiftInfo> = self.gifts.iter()
+            .filter(|(_, info)| info.expired())
+            .map(|(_, combined_info)| combined_info.clone())
+            .collect();
+        for expired_info in expired_list.iter() {
+            self.remove(expired_info);
+        }
+        return expired_list;
     }
     pub fn remove(&mut self, info: &CombinedSendGiftInfo) {
         self.gifts.remove(&(info.user.uid, info.gift_name.clone()));
     }
 }
 
-#[allow(unused)]
 #[derive(Debug, Clone)]
 pub struct SuperChatPresistent {
     pub superchat_info: SuperChatInfo,
-    pub expiry_time: DateTime<Utc>,
+    pub send_time: DateTime<Utc>,
     pub next_show_time: DateTime<Utc>,
 }
 
-#[allow(unused)]
-pub struct SuperChatList {
-    superchats: HashMap<u64, SuperChatPresistent>,
+impl SuperChatPresistent {
+    pub fn expiry_time(&self) -> DateTime<Utc> {
+        self.send_time.checked_add_signed(TimeDelta::seconds(self.superchat_info.keep_time as i64))
+            .expect("Failed to calculate time: Time out of range")
+    }
+    pub fn expired(&self) -> bool {
+        return Utc::now() > self.expiry_time()
+    }
+    pub fn should_show(&self) -> bool {
+        return Utc::now() > self.next_show_time
+    }
 }
 
-#[allow(unused)]
+pub struct SuperChatList {
+    superchats: HashMap<(u64, DateTime<Utc>), SuperChatPresistent>,
+}
+
 impl SuperChatList {
+
     pub fn append_superchat(&mut self, info: SuperChatInfo, show_interval: TimeDelta) {
-        let now = Utc::now();
-        let expiry_time = now.checked_add_signed(TimeDelta::seconds(info.keep_time as i64)).expect("Failed to update time");
-        let next_show_time = now.checked_add_signed(TimeDelta::seconds(info.keep_time as i64)).expect("Failed to update time");
         let uid = info.user.uid;
+        let send_time = Utc::now();
+        let next_show_time = send_time.checked_add_signed(show_interval).expect("Failed to update time");
         let presistent = SuperChatPresistent {
             superchat_info: info,
-            expiry_time,
+            send_time,
             next_show_time
         };
-        self.superchats.insert(uid, presistent);
+        self.superchats.insert((uid, send_time), presistent);
     }
-    /// Return expired and net show time
-    pub fn get_should_show(&self) -> Vec<SuperChatPresistent> {
-        self.superchats.iter().filter(|(_, presistent)| {
-            Utc::now() > presistent.expiry_time || Utc::now() > presistent.next_show_time
-        })
-        .map(|(_, presistent)| presistent.clone())
-        .collect()
-    }
-    /// Remove expired and step up next_show_time
-    pub fn update_step(&mut self, show_interval: TimeDelta) {
-        self.superchats.retain(|_, presistent| presistent.expiry_time > Utc::now());
-        for (_, sc) in self.superchats.iter_mut() {
-            if Utc::now() > sc.next_show_time {
-                sc.next_show_time = sc.next_show_time.checked_add_signed(show_interval).expect("Failed to update time");
+    /// Return superchats that need to show again & expired superchats. This will remove expired superchats.
+    pub fn get_should_show(&mut self) -> Vec<SuperChatPresistent> {
+        let should_show_list: Vec<SuperChatPresistent> = self.superchats.iter()
+            .filter(|(_, sc)| sc.expired() | sc.should_show())
+            .map(|(_, presistent)| presistent.clone())
+            .collect();
+        // Remove expired in the should show list
+        for info in should_show_list.iter() {
+            if info.expired() {
+                self.superchats.remove(&(info.superchat_info.user.uid, info.send_time));
             }
         }
+        return should_show_list;
     }
+    
 }
 
 #[allow(unused)]
