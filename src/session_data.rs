@@ -257,7 +257,7 @@ fn calculate_w_rid(params: &BTreeMap<&str, String>, mixin_key: &str) -> String {
 pub fn init_room_data(
     room_id: u64,
     uid: Option<u64>,
-    sessdata: Option<String>,
+    sessdata: &Option<String>,
 ) -> Result<(SessionData, Vec<WebsocketHost>), InitRoomError> {
     // Start calling APIs
     let agent = ureq::builder()

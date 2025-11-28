@@ -1,3 +1,5 @@
+use colored::{ColoredString, Colorize};
+
 #[derive(Debug, Clone, Copy)]
 pub enum GuardLevel {
     Captain     = 3,    // 艦長
@@ -24,6 +26,14 @@ impl GuardLevel {
             GuardLevel::Captain => "艦長",
             GuardLevel::Commander => "提督",
             GuardLevel::Governor => "總督",
+        }
+    }
+
+    pub fn colorize(&self, text: &str) -> ColoredString {
+        match self {
+            GuardLevel::Captain => text.bright_blue(),
+            GuardLevel::Commander => text.bright_purple(),
+            GuardLevel::Governor => text.bright_yellow(),
         }
     }
 }

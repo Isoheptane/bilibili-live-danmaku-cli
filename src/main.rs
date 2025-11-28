@@ -23,16 +23,18 @@ mod client;
 use packet::{http::*, ws::*};
 use config::Config;
 
+use crate::client::ClientError;
 use crate::session_data::SessionData;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
+    
     SimpleLogger::new().with_level(log::LevelFilter::Info).env().with_timestamp_format(
         time::macros::format_description!("[hour]:[minute]:[second]")
     ).init().unwrap();
     // Get arguments
     let config = Config::from_args(env::args().collect());
 
-    let (session, hosts) = match init_room_data(config.room_id, config.uid, config.sessdata.clone()) {
+    let (session, hosts) = match init_room_data(config.room_id, config.uid, &config.sessdata) {
         Ok(result) => result,
         Err(e) => panic!("Failed to initialize room data: {}", e)
     };
@@ -40,37 +42,33 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     // Get host uri
     let host = hosts.get(0).expect("No available server in the list!").clone();
     let host_url = format!("wss://{}:{}/sub", host.host, host.wss_port);
-    log::info!(
-        target: "main",
-        "Initializing connection to {} ...",
-        host_url.bright_green()
-    );
     
     loop {
-        if let Err(e) = start_listening(session.clone(), &host_url, &config) {
+        log::info!(target: "init", "Initializing connection to {} ...", host_url.bright_green());
+
+        if let Err(e) = start_listening(&session, &host_url, &config) {
             log::warn!(target: "init", "Error occured in the connection: \n {}", e.to_string());
         } else {
             log::warn!(target: "init", "Connection closed by server");
         }
+
         log::warn!(target: "init", "Reconnect after 5 seconds...");
+
         sleep(Duration::from_secs(5));
     }
 }
 
 fn start_listening(
-    session: SessionData,
+    session: &SessionData,
     host_url: &str,
     config: &Config,
-) -> Result<(), Box<dyn std::error::Error>> {
+) -> Result<(), Box<ClientError>> {
 
     let mut context = LiveContext::new();
 
-    let mut client = LiveClient::new(host_url, session)?;
+    let mut client = LiveClient::connect(host_url, session.to_owned())?;
 
-    log::info!(
-        target: "main",
-        "Connected to live room"
-    );
+    log::info!(target: "listener", "Connected to live room");
 
     let mut last_heartbeat = Utc::now();
     // Main loop
@@ -85,19 +83,19 @@ fn start_listening(
             let packet = heartbeat_packet_binary();
             if let Err(e) = client.send_message(Message::binary(packet)) {
                 log::warn!(
-                    target: "client",
+                    target: "listener",
                     "Failed to send heartbeat packet:\n {}",
                     e
                 );
             } else {
                 last_heartbeat = Utc::now();
                 log::debug!(
-                    target: "client",
+                    target: "listener",
                     "Heartbeat packet sent"
                 );
             }
         }
-        // Check context events
+        // Check events with context
         for info in context.gift_list.get_expired() {
             println!(
                 " * {} 投餵了 {} 個 {}",
@@ -111,16 +109,16 @@ fn start_listening(
         let messages = match client.recv_messages() {
             Ok(x) => x,
             Err(e) => match e {
-                client::ClientError::ConnectionClosed => {
+                ClientError::ConnectionClosed => {
                     return Ok(());
                 }
                 _ => {
-                    log::debug!("Failed to poll messages");
+                    log::debug!(target: "listener", "Failed to poll messages");
                     return Err(e.into())
                 }
             }
         };
-        log::trace!("Ready to process depacked messages...");
+        log::trace!(target: "listener", "Ready to process depacked messages...");
         for message in messages {
             process_depacked_message(message, config, &mut context);
         }
@@ -135,11 +133,11 @@ fn process_depacked_message(
     // Display certificate resp and heartbeat resp ony in debug
     let messages = match message {
         DepackedMessage::CertificateResp => {
-            log::debug!(target: "client", "Received certificate response");
+            log::debug!(target: "msg_process", "Received certificate response");
             return;
         },
         DepackedMessage::HeartbeatResp(count) => {
-            log::debug!(target: "client", "Received heartbeat response ({})", count);
+            log::debug!(target: "msg_process", "Received heartbeat response ({})", count);
             return;
         },
         DepackedMessage::LiveMessages(messages) => messages
@@ -148,12 +146,12 @@ fn process_depacked_message(
         let live_message = match LiveMessage::try_from(raw_message) {
             Ok(x) => x,
             Err(RawMessageDeserializeError::NotSupported(cmd)) => {
-                log::debug!(target: "client", "Ignored unsupported command type {:#?}", cmd);
+                log::debug!(target: "msg_process", "Ignored unsupported command type {:#?}", cmd);
                 continue;
             },
             Err(RawMessageDeserializeError::DeserializeError(message)) => {
-                log::warn!(target: "client", "Failed to deserialize raw message into live message");
-                log::warn!(target: "client", "Live message: {}", message);
+                log::warn!(target: "msg_process", "Failed to deserialize raw message into live message");
+                log::warn!(target: "msg_process", "Live message: {}", message);
                 continue;
             }
         };
@@ -166,7 +164,7 @@ fn process_live_message(
     config: &Config, 
     context: &mut LiveContext
 ) {
-    log::debug!("Processing Live Message:\n{:#?}", message);
+    log::debug!(target: "msg_process", "Processing Live Message:\n{:#?}", message);
     match message {
         LiveMessage::LiveStart(_) => {
             println!(" * {}", "直播開始了".bright_green());
@@ -254,11 +252,7 @@ fn process_live_message(
         }
         #[allow(unreachable_patterns)]
         other => {
-            log::debug!(
-                target: "client",
-                "Ignored message that doesn't support display: {:#?}",
-                other
-            )
+            log::debug!(target: "msg_process", "Ignored message that does not need to be displayed: {:#?}", other)
         }
     }
 }
@@ -267,9 +261,7 @@ fn process_live_message(
 fn get_colored_name(name: &str, guard_level: Option<GuardLevel>) -> ColoredString {
     match guard_level {
         None => name.bright_green(),
-        Some(GuardLevel::Captain) => name.bright_blue(),
-        Some(GuardLevel::Commander) => name.bright_purple(),
-        Some(GuardLevel::Governor) => name.bright_yellow(),
+        Some(level) => level.colorize(name)
     }
 }
 
