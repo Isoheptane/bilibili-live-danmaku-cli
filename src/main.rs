@@ -249,10 +249,10 @@ fn process_live_message(
                 format!("${:.2} {}s", info.price, info.keep_time).bright_yellow(),
                 info.message.bright_yellow(),
             );
-            if config.persistent_superchat {
+            if config.repeat_superchat {
                 context.superchat_list.append_superchat(
                     info, 
-                    TimeDelta::seconds(config.persistent_superchat_interval_sec as i64)
+                    TimeDelta::seconds(config.repeat_superchat_interval_sec as i64)
                 );
             }
         }

@@ -33,9 +33,9 @@ Example config file:
     "sessdata": "<YOUR_SESSDATA_COOKIE>",
     "giftCombo": true,
     "comboInterval": 2000,
-    "comboRefresh": false,
-    "pollInterval": 200,
-    "firefoxCookiesDatabase": "<FIREFOX_DATABASE_FILE>"
+    "repeatSuperchat": true,
+    "repeatSuperchatInterval": 30,
+    "pollInterval": 200
 }
 ```
 
@@ -63,6 +63,14 @@ Only gift messages from same audience with same gift name are combined.
 
 ### `comboInterval` | `--combo-interval <INTERVAL_MS>`
 Specifies the gift message combining interval in milliseconds. If this argument is not specified, it will default to 2000 ms.
+
+### `repeatSuperchat` | `--repeat-sc`
+(Experimental feature, not tested)
+
+Enable repeat superchat feature. This feature will repeat superchats at a predetermined interval. This feature will also repeat superchats when they are expired.
+
+### `repeatSuperchatInterval` | `--repeat-sc-interval <INTERVAL_MS>`
+Specifies the interval between two superchat repeats. If this argument is not specified, it will default to 30s.
 
 ### `pollInterval` | `--poll-interval <INTERVAL_MS>`
 Specifies the message poll interval of live WebSocket stream in milliseconds. If this argument is not specified, it will default to 200 ms.

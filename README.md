@@ -33,9 +33,9 @@
     "sessdata": "<YOUR_SESSDATA_COOKIE>",
     "giftCombo": true,
     "comboInterval": 2000,
-    "comboRefresh": false,
-    "pollInterval": 200,
-    "firefoxCookiesDatabase": "<FIREFOX_DATABASE_FILE>"
+    "repeatSuperchat": true,
+    "repeatSuperchatInterval": 30,
+    "pollInterval": 200
 }
 ```
 
@@ -63,6 +63,14 @@
 
 ### `comboInterval` | `--combo-interval <INTERVAL_MS>`
 指定合併區間的長度（以毫秒計）。如果該參數未提供，則預設為 2000 毫秒。
+
+### `repeatSuperchat` | `--repeat-sc`
+（實驗性功能、未驗證）
+
+啟用 Superchat 消息重放功能。該功能會每隔一段時間重放 Superchat 消息。該功能也會在 Superchat 消息過期時重放 Superchat 消息。
+
+### `repeatSuperchatInterval` | `--repeat-sc-interval <INTERVAL_MS>`
+指定從兩次重放之間的時間間隔（以秒計）。如果該參數未提供，則預設為 30 秒秒。
 
 ### `pollInterval` | `--poll-interval <INTERVAL_MS>`
 指定從直播 WebSocket 流中拉取消息的時間間隔（以毫秒計）。如果該參數未提供，則預設為 200 毫秒。

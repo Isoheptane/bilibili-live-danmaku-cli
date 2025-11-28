@@ -4,5 +4,7 @@
     "sessdata": "<YOUR_SESSDATA_COOKIE>",
     "giftCombo": true,
     "comboInterval": 2000,
+    "repeatSuperchat": true,
+    "repeatSuperchatInterval": 30,
     "pollInterval": 200
 }
