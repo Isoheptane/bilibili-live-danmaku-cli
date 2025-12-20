@@ -44,7 +44,7 @@ pub struct SessionData {
 
 #[derive(Debug, Display)]
 pub enum InitRoomError {
-    RequestFailed(ureq::Error),
+    UreqError(ureq::Error),
     BadResponse(std::io::Error),
     IoError(io::Error),
 }
@@ -52,16 +52,22 @@ pub enum InitRoomError {
 impl error::Error for InitRoomError {
     fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
         match &self {
-            Self::RequestFailed(e) => Some(e),
+            Self::UreqError(e) => Some(e),
             Self::BadResponse(e) => Some(e),
             Self::IoError(e) => Some(e),
         }
     }
 }
 
-impl From<io::Error> for InitRoomError {
-    fn from(err: io::Error) -> Self {
+impl From<std::io::Error> for InitRoomError {
+    fn from(err: std::io::Error) -> Self {
         InitRoomError::IoError(err)
+    }
+}
+
+impl From<ureq::Error> for InitRoomError {
+    fn from(err: ureq::Error) -> Self {
+        InitRoomError::UreqError(err)
     }
 }
 
@@ -71,20 +77,18 @@ struct BuvidResponse {
     b_4: String,
 }
 
-fn get_buvid_cookies(agent: &ureq::Agent) -> Result<(String, String), InitRoomError> {
+fn get_buvid_cookies() -> Result<(String, String), InitRoomError> {
     log::debug!(
         target: "main",
         "Requesting buvid3 and buvid4 from finger API..."
     );
 
-    let buvid_data: BuvidResponse = agent
-        .get("https://api.bilibili.com/x/frontend/finger/spi")
-        .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3")
-        .set("Referer", "https://www.bilibili.com/")
-        .call()
-        .map_err(|e| InitRoomError::RequestFailed(e))?
-        .into_json::<HttpAPIResponse<BuvidResponse>>()
-        .map_err(|e| InitRoomError::BadResponse(e))?
+    let buvid_data: BuvidResponse = ureq::get("https://api.bilibili.com/x/frontend/finger/spi")
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3")
+        .header("Referer", "https://www.bilibili.com/")
+        .call()?
+        .body_mut()
+        .read_json::<HttpAPIResponse<BuvidResponse>>()?
         .response_data();
 
     log::debug!(
@@ -97,7 +101,7 @@ fn get_buvid_cookies(agent: &ureq::Agent) -> Result<(String, String), InitRoomEr
     Ok((buvid_data.b_3, buvid_data.b_4))
 }
 
-fn get_wbi_keys(agent: &ureq::Agent) -> Result<(String, String), InitRoomError> {
+fn get_wbi_keys() -> Result<(String, String), InitRoomError> {
     // Create cache directory if it doesn't exist
     fs::create_dir_all(WBI_CACHE_DIR)?;
 
@@ -135,14 +139,12 @@ fn get_wbi_keys(agent: &ureq::Agent) -> Result<(String, String), InitRoomError> 
         "Requesting WBI keys from nav API..."
     );
 
-    let nav_data: serde_json::Value = agent
-        .get("https://api.bilibili.com/x/web-interface/nav")
-        .set("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3")
-        .set("Referer", "https://www.bilibili.com/")
-        .call()
-        .map_err(|e| InitRoomError::RequestFailed(e))?
-        .into_json::<HttpAPIResponse<serde_json::Value>>()
-        .map_err(|e| InitRoomError::BadResponse(e))?
+    let nav_data: serde_json::Value = ureq::get("https://api.bilibili.com/x/web-interface/nav")
+        .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.3")
+        .header("Referer", "https://www.bilibili.com/")
+        .call()?
+        .body_mut()
+        .read_json::<HttpAPIResponse<serde_json::Value>>()?
         .response_data();
 
     let wbi_img = nav_data.get("wbi_img").ok_or_else(|| {
@@ -259,20 +261,13 @@ pub fn init_room_data(
     uid: Option<u64>,
     sessdata: &Option<String>,
 ) -> Result<(SessionData, Vec<WebsocketHost>), InitRoomError> {
-    // Start calling APIs
-    let agent = ureq::builder()
-        .tls_connector(native_tls::TlsConnector::new().unwrap().into())
-        .build();
     // Get room data for the real room id
-    let room_data: RoomInitData = agent
-        .get(&format!(
-            "https://api.live.bilibili.com/room/v1/Room/room_init?id={}",
-            room_id
+    let room_data: RoomInitData = ureq::get(&format!(
+            "https://api.live.bilibili.com/room/v1/Room/room_init?id={room_id}",
         ))
-        .call()
-        .map_err(|e| InitRoomError::RequestFailed(e))?
-        .into_json::<HttpAPIResponse<RoomInitData>>()
-        .map_err(|e| InitRoomError::BadResponse(e))?
+        .call()?
+        .body_mut()
+        .read_json::<HttpAPIResponse<RoomInitData>>()?
         .response_data();
 
     let room_id = room_data.room_id;
@@ -282,10 +277,10 @@ pub fn init_room_data(
     );
 
     // Get WBI keys (from cache or API)
-    let (img_key, sub_key) = get_wbi_keys(&agent)?;
+    let (img_key, sub_key) = get_wbi_keys()?;
 
     // Get buvid3 and buvid4 cookies
-    let (buvid3, buvid4) = get_buvid_cookies(&agent)?;
+    let (buvid3, buvid4) = get_buvid_cookies()?;
 
     // Get raw_wbi_key
     let raw_wbi_key = format!("{}{}", img_key, sub_key);
@@ -323,16 +318,13 @@ pub fn init_room_data(
     let cookie_string = cookie_parts.join("; ");
 
     // Get danmaku info data
-    let danmaku_info_data: DanmakuInfoData = agent
-        .get(&format!(
-            "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?{}",
-            query_string
+    let danmaku_info_data: DanmakuInfoData = ureq::get(&format!(
+            "https://api.live.bilibili.com/xlive/web-room/v1/index/getDanmuInfo?{query_string}",
         ))
-        .set("Cookie", &cookie_string)
-        .call()
-        .map_err(|e| InitRoomError::RequestFailed(e))?
-        .into_json::<HttpAPIResponse<DanmakuInfoData>>()
-        .map_err(|e| InitRoomError::BadResponse(e))?
+        .header("Cookie", &cookie_string)
+        .call()?
+        .body_mut()
+        .read_json::<HttpAPIResponse<DanmakuInfoData>>()?
         .response_data();
 
     let token = danmaku_info_data.token;

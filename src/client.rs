@@ -46,7 +46,7 @@ impl LiveClient {
             MaybeTlsStream::Plain(stream) => {
                 stream.set_nonblocking(true)
             },
-            MaybeTlsStream::NativeTls(stream) => {
+            MaybeTlsStream::Rustls(stream) => {
                 stream.get_mut().set_nonblocking(true)
             },
             _ => unimplemented!()
@@ -96,7 +96,7 @@ impl LiveClient {
             }
 
             let data = msg.into_data();
-            let packet = match Packet::from_binary(data.as_slice()) {
+            let packet = match Packet::from_binary(&data) {
                 Ok(x) => x,
                 Err(e) => {
                     log::debug!(target: "client", "Failed to parse binary packet: {}\nData: {}", e, hex::encode(data));
